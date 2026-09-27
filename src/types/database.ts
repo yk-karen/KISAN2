@@ -19,6 +19,7 @@ export interface LocationCoords {
 export interface Profile {
   id: string;
   full_name: string;
+  email?: string | null;
   phone: string | null;
   role: UserRole;
   language: string;

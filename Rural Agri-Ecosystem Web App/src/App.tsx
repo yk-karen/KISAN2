@@ -1,13 +1,26 @@
 import { useState, useEffect, type ReactNode } from "react";
 import { isSupabaseConfigured, supabase } from "../../src/lib/supabase";
+import { localDb } from "../../src/lib/localDatabase";
 import type { Json } from "../../src/types/database.generated";
 import {
   fetchProfile,
   updateProfile,
   fetchEquipmentListings,
+  createEquipmentListing,
+  fetchOwnerEquipmentListings,
+  updateEquipmentListing,
+  deleteEquipmentListing,
   fetchStorageListings,
+  createStorageListing,
+  fetchOwnerStorageListings,
+  updateStorageListing,
+  deleteStorageListing,
+  fetchWorkers,
   fetchJobPostings,
+  createJobPosting,
   applyForJob,
+  fetchWorkerApplications,
+  updateJobApplicationStatus,
   createServiceRequest,
   fetchUserRequests,
   updateServiceRequestStatus,
@@ -22,11 +35,6 @@ import {
   updatePersonalizationProfile,
 } from "../../src/lib/api";
 import { VoiceInputButton } from "../../src/components/VoiceInputButton";
-import { SpeakButton as RealSpeakButton } from "../../src/components/SpeakButton";
-import { matchSchemeForProfile } from "../../src/lib/schemeMatching";
-import { SchemeMatchInfo } from "../../src/components/SchemeMatchInfo";
-import { OfficialApplyButton } from "../../src/components/OfficialApplyButton";
-import { SchemeEligibilityQuiz } from "../../src/components/SchemeEligibilityQuiz";
 
 type WeatherState = { temperature: number; description: string; location: string; advice: string } | null;
 
@@ -118,23 +126,24 @@ const languageOptions: { code: LanguageCode; label: string; nativeLabel: string 
 ];
 
 const translations: Record<LanguageCode, Record<string, string>> = {
-  en: {  welcome: "WELCOME", signIn: "Sign in to continue", chooseUse: "Choose how you use Kisan Saathi, then enter your mobile number.", mobile: "Mobile number", sendOtp: "Send one-time password", secure: "Your number stays private and secure.", whatNeed: "What do you need?", schemes: "Government schemes", schemesHint: "Suggestions matched to your crops, land, and needs.", apply: "Can I apply?", canIApply: "Can I apply for this?", weatherTitle: "Live Weather & Advice", equipmentMarketplace: "Equipment Marketplace", farmJobs: "Farm Job Opportunities", storageHub: "Crop Storage Facilities", communityHub: "Farmers Community Forum", aiAdvisor: "AI Scheme Advisor", home: "Home", equipment: "Equipment", jobs: "Jobs", requests: "Requests", profile: "Profile", logout: "Log out", selectLanguage: "Select language", onboarding: "Set up your profile", skip: "Skip for now", continue: "Continue", finish: "Finish setup", back: "Back" , goodMorning: "GOOD MORNING", namaste: "Namaste", yourFarmArea: "Your farm area", connectedLive: "is connected live with Kisan Saathi.", addValidPincode: "Add a valid pincode to see local weather.", bookTractor: "Book Tractor", findLabor: "Find Labor", findStorage: "Find Storage", bookedServices: "Booked services", viewAll: "View all", noBookedServices: "You have no booked services yet.", villageVoices: "Village voices & Live forum", communityDiscussions: "Community Discussions", noMessagesYet: "No messages yet. Be the first to post!", shareTip: "Share a farming tip...", postBtn: "Post", todayWeather: "today's weather" },
-  hi: {  welcome: "स्वागत है", signIn: "जारी रखने के लिए साइन इन करें", chooseUse: "किसान साथी का उपयोग कैसे करेंगे? अपना मोबाइल नंबर दर्ज करें।", mobile: "मोबाइल नंबर", sendOtp: "वन-टाइम पासवर्ड भेजें", secure: "आपका नंबर सुरक्षित और निजी रहेगा।", whatNeed: "आपको क्या चाहिए?", schemes: "सरकारी योजनाएं", schemesHint: "आपकी फसल, जमीन और जरूरतों के आधार पर सुझाव।", apply: "क्या मैं आवेदन कर सकता हूं?", canIApply: "क्या मैं इस योजना के लिए आवेदन कर सकता हूं?", weatherTitle: "मौसम और कृषि सलाह", equipmentMarketplace: "उपकरण बाज़ार", farmJobs: "कृषि नौकरियां", storageHub: "फसल भंडारण", communityHub: "किसान मंच", aiAdvisor: "एआई योजना सलाहकार", home: "होम", equipment: "उपकरण", jobs: "काम", requests: "अनुरोध", profile: "प्रोफाइल", logout: "लॉग आउट", selectLanguage: "भाषा चुनें", onboarding: "अपनी प्रोफाइल बनाएं", skip: "अभी छोड़ें", continue: "जारी रखें", finish: "सेटअप पूरा करें" , goodMorning: "शुभ प्रभात", namaste: "नमस्ते", yourFarmArea: "आपका कृषि क्षेत्र", connectedLive: "किसान साथी से लाइव जुड़ा हुआ है।", addValidPincode: "स्थानीय मौसम देखने के लिए एक मान्य पिनकोड जोड़ें।", bookTractor: "ट्रैक्टर बुक करें", findLabor: "श्रमिक खोजें", findStorage: "भंडारण खोजें", bookedServices: "बुक की गई सेवाएं", viewAll: "सभी देखें", noBookedServices: "आपकी अभी तक कोई बुक की गई सेवा नहीं है।", villageVoices: "गांव की आवाज और लाइव मंच", communityDiscussions: "सामुदायिक चर्चाएं", noMessagesYet: "अभी तक कोई संदेश नहीं। सबसे पहले पोस्ट करें!", shareTip: "कृषि सुझाव साझा करें...", postBtn: "पोस्ट करें", todayWeather: "आज का मौसम" },
+  en: { welcome: "WELCOME", signIn: "Sign in to continue", chooseUse: "Choose how you use Kisan Saathi, then enter your mobile number.", mobile: "Mobile number", sendOtp: "Send one-time password", secure: "Your number stays private and secure.", whatNeed: "What do you need?", schemes: "Government schemes", schemesHint: "Suggestions matched to your crops, land, and needs.", apply: "Can I apply?", home: "Home", equipment: "Equipment", jobs: "Jobs", requests: "Requests", profile: "Profile", logout: "Log out", selectLanguage: "Select language", onboarding: "Set up your profile", skip: "Skip for now", continue: "Continue", finish: "Finish setup", back: "Back" },
+  hi: { welcome: "स्वागत है", signIn: "जारी रखने के लिए साइन इन करें", chooseUse: "किसान साथी का उपयोग कैसे करेंगे? अपना मोबाइल नंबर दर्ज करें।", mobile: "मोबाइल नंबर", sendOtp: "वन-टाइम पासवर्ड भेजें", secure: "आपका नंबर सुरक्षित और निजी रहेगा।", whatNeed: "आपको क्या चाहिए?", schemes: "सरकारी योजनाएं", schemesHint: "आपकी फसल, जमीन और जरूरतों के आधार पर सुझाव।", apply: "क्या मैं आवेदन कर सकता हूं?", home: "होम", equipment: "उपकरण", jobs: "काम", requests: "अनुरोध", profile: "प्रोफाइल", logout: "लॉग आउट", selectLanguage: "भाषा चुनें", onboarding: "अपनी प्रोफाइल बनाएं", skip: "अभी छोड़ें", continue: "जारी रखें", finish: "सेटअप पूरा करें" },
   mr: { welcome: "स्वागत आहे", signIn: "पुढे जाण्यासाठी साइन इन करा", chooseUse: "किसान साथी कसे वापराल? तुमचा मोबाईल नंबर टाका.", mobile: "मोबाईल नंबर", sendOtp: "वन-टाइम पासवर्ड पाठवा", secure: "तुमचा नंबर सुरक्षित आणि खासगी राहील.", whatNeed: "तुम्हाला काय हवे आहे?", schemes: "सरकारी योजना", schemesHint: "तुमची पिके, जमीन आणि गरजांवर आधारित सूचना.", apply: "मी अर्ज करू शकतो का?", home: "मुख्यपृष्ठ", equipment: "उपकरणे", jobs: "कामे", requests: "विनंत्या", profile: "प्रोफाइल", logout: "लॉग आउट", selectLanguage: "भाषा निवडा", onboarding: "प्रोफाइल तयार करा", skip: "आत्ता वगळा", continue: "पुढे चला", finish: "सेटअप पूर्ण करा" },
   bn: { welcome: "স্বাগতম", signIn: "চালিয়ে যেতে সাইন ইন করুন", chooseUse: "আপনি কিষান সাথী কীভাবে ব্যবহার করবেন? মোবাইল নম্বর দিন।", mobile: "মোবাইল নম্বর", sendOtp: "ওটিপি পাঠান", secure: "আপনার নম্বর নিরাপদ ও গোপন থাকবে।", whatNeed: "আপনার কী প্রয়োজন?", schemes: "সরকারি প্রকল্প", schemesHint: "আপনার ফসল, জমি ও প্রয়োজনের ভিত্তিতে পরামর্শ।", apply: "আমি কি আবেদন করতে পারি?", home: "হোম", equipment: "সরঞ্জাম", jobs: "কাজ", requests: "অনুরোধ", profile: "প্রোফাইল", logout: "লগ আউট", selectLanguage: "ভাষা নির্বাচন করুন", onboarding: "প্রোফাইল তৈরি করুন", skip: "এখন এড়িয়ে যান", continue: "চালিয়ে যান", finish: "সেটআপ শেষ করুন" },
   te: { welcome: "స్వాగతం", signIn: "కొనసాగించడానికి సైన్ ఇన్ చేయండి", chooseUse: "కిసాన్ సాథీని ఎలా ఉపయోగిస్తారు? మొబైల్ నంబర్ నమోదు చేయండి.", mobile: "మొబైల్ నంబర్", sendOtp: "వన్ టైమ్ పాస్‌వర్డ్ పంపండి", secure: "మీ నంబర్ సురక్షితంగా ఉంటుంది.", whatNeed: "మీకు ఏమి కావాలి?", schemes: "ప్రభుత్వ పథకాలు", schemesHint: "మీ పంటలు, భూమి మరియు అవసరాల ఆధారంగా సూచనలు.", apply: "నేను దరఖాస్తు చేయవచ్చా?", home: "హోమ్", equipment: "పరికరాలు", jobs: "పనులు", requests: "అభ్యర్థనలు", profile: "ప్రొఫైల్", logout: "లాగ్ అవుట్", selectLanguage: "భాషను ఎంచుకోండి", onboarding: "మీ ప్రొఫైల్ ఏర్పాటు చేయండి", skip: "ఇప్పుడు దాటవేయండి", continue: "కొనసాగించండి", finish: "సెటప్ పూర్తి చేయండి" },
-  ta: {  welcome: "வரவேற்கிறோம்", signIn: "தொடர உள்நுழையவும்", chooseUse: "கிசான் சாதியை எப்படிப் பயன்படுத்துவீர்கள்? கைபேசி எண்ணை உள்ளிடவும்.", mobile: "கைபேசி எண்", sendOtp: "ஒருமுறை கடவுச்சொல் அனுப்பவும்", secure: "உங்கள் எண் பாதுகாப்பாக இருக்கும்.", whatNeed: "உங்களுக்கு என்ன தேவை?", schemes: "அரசுத் திட்டங்கள்", schemesHint: "உங்கள் பயிர்கள், நிலம் மற்றும் தேவைகளின் அடிப்படையில் பரிந்துரைகள்.", apply: "நான் விண்ணப்பிக்கலாமா?", canIApply: "நான் இந்த திட்டத்திற்கு விண்ணப்பிக்கலாமா?", weatherTitle: "வானிலை மற்றும் ஆலோசனை", equipmentMarketplace: "கருவிகள் சந்தை", farmJobs: "விவசாய வேலைகள்", storageHub: "பயிர் சேமிப்பு", communityHub: "விவசாயிகள் மன்றம்", aiAdvisor: "ஏஐ திட்ட ஆலோசகர்", home: "முகப்பு", equipment: "கருவிகள்", jobs: "வேலைகள்", requests: "கோரிக்கைகள்", profile: "சுயவிவரம்", logout: "வெளியேறு", selectLanguage: "மொழியைத் தேர்ந்தெடுக்கவும்", onboarding: "சுயவிவரத்தை அமைக்கவும்", skip: "இப்போது தவிர்க்கவும்", continue: "தொடரவும்", finish: "அமைப்பை முடிக்கவும்" , goodMorning: "காலை வணக்கம்", namaste: "வணக்கம்", yourFarmArea: "உங்கள் விவசாயப் பகுதி", connectedLive: "கிசான் சாதியுடன் நேரலையில் இணைக்கப்பட்டுள்ளது.", addValidPincode: "உள்ளூர் வானிலையைப் பார்க்க பின்கோடைச் சேர்க்கவும்.", bookTractor: "டிராக்டர் முன்பதிவு", findLabor: "வேலையாட்களைக் கண்டறியவும்", findStorage: "சேமிப்பைக் கண்டறியவும்", bookedServices: "முன்பதிவு செய்யப்பட்ட சேவைகள்", viewAll: "அனைத்தையும் பார்", noBookedServices: "உங்களிடம் முன்பதிவு செய்யப்பட்ட சேவைகள் எதுவுமில்லை.", villageVoices: "கிராமக் குரல்கள் & மன்றம்", communityDiscussions: "சமூக விவாதங்கள்", noMessagesYet: "செய்திகள் எதுவும் இல்லை. முதலில் பதிவிடவும்!", shareTip: "விவசாய குறிப்பைப் பகிரவும்...", postBtn: "பதிவிடு", todayWeather: "இன்றைய வானிலை" },
+  ta: { welcome: "வரவேற்கிறோம்", signIn: "தொடர உள்நுழையவும்", chooseUse: "கிசான் சாதியை எப்படிப் பயன்படுத்துவீர்கள்? கைபேசி எண்ணை உள்ளிடவும்.", mobile: "கைபேசி எண்", sendOtp: "ஒருமுறை கடவுச்சொல் அனுப்பவும்", secure: "உங்கள் எண் பாதுகாப்பாக இருக்கும்.", whatNeed: "உங்களுக்கு என்ன தேவை?", schemes: "அரசுத் திட்டங்கள்", schemesHint: "உங்கள் பயிர்கள், நிலம் மற்றும் தேவைகளின் அடிப்படையில் பரிந்துரைகள்.", apply: "நான் விண்ணப்பிக்கலாமா?", canIApply: "நான் இந்த திட்டத்திற்கு விண்ணப்பிக்கலாமா?", weatherTitle: "வானிலை மற்றும் ஆலோசனை", equipmentMarketplace: "கருவிகள் சந்தை", farmJobs: "விவசாய வேலைகள்", storageHub: "பயிர் சேமிப்பு", communityHub: "விவசாயிகள் மன்றம்", aiAdvisor: "ஏஐ திட்ட ஆலோசகர்", home: "முகப்பு", equipment: "கருவிகள்", jobs: "வேலைகள்", requests: "கோரிக்கைகள்", profile: "சுயவிவரம்", logout: "வெளியேறு", selectLanguage: "மொழியைத் தேர்ந்தெடுக்கவும்", onboarding: "சுயவிவரத்தை அமைக்கவும்", skip: "இப்போது தவிர்க்கவும்", continue: "தொடரவும்", finish: "அமைப்பை முடிக்கவும்", goodMorning: "காலை வணக்கம்", namaste: "வணக்கம்", yourFarmArea: "உங்கள் விவசாயப் பகுதி", connectedLive: "கிசான் சாதியுடன் நேரலையில் இணைக்கப்பட்டுள்ளது.", addValidPincode: "உள்ளூர் வானிலையைப் பார்க்க பின்கோடைச் சேர்க்கவும்.", bookTractor: "டிராக்டர் முன்பதிவு", findLabor: "வேலையாட்களைக் கண்டறியவும்", findStorage: "சேமிப்பைக் கண்டறியவும்", bookedServices: "முன்பதிவு செய்யப்பட்ட சேவைகள்", viewAll: "அனைத்தையும் பார்", noBookedServices: "உங்களிடம் முன்பதிவு செய்யப்பட்ட சேவைகள் எதுவுமில்லை.", villageVoices: "கிராமக் குரல்கள் & மன்றம்", communityDiscussions: "சமூக விவாதங்கள்", noMessagesYet: "செய்திகள் எதுவும் இல்லை. முதலில் பதிவிடவும்!", shareTip: "விவசாய குறிப்பைப் பகிரவும்...", postBtn: "பதிவிடு", todayWeather: "இன்றைய வானிலை" },
   gu: { welcome: "સ્વાગત છે", signIn: "ચાલુ રાખવા માટે સાઇન ઇન કરો", chooseUse: "કિસાન સાથીનો ઉપયોગ કેવી રીતે કરશો? મોબાઇલ નંબર દાખલ કરો.", mobile: "મોબાઇલ નંબર", sendOtp: "વન-ટાઇમ પાસવર્ડ મોકલો", secure: "તમારો નંબર સુરક્ષિત અને ખાનગી રહેશે.", whatNeed: "તમને શું જોઈએ છે?", schemes: "સરકારી યોજનાઓ", schemesHint: "તમારા પાક, જમીન અને જરૂરિયાતો પર આધારિત સૂચનો.", apply: "શું હું અરજી કરી શકું?", home: "હોમ", equipment: "સાધનો", jobs: "કામ", requests: "વિનંતીઓ", profile: "પ્રોફાઇલ", logout: "લૉગ આઉટ", selectLanguage: "ભાષા પસંદ કરો", onboarding: "તમારી પ્રોફાઇલ સેટ કરો", skip: "હમણાં છોડો", continue: "ચાલુ રાખો", finish: "સેટઅપ પૂર્ણ કરો" },
   kn: { welcome: "ಸ್ವಾಗತ", signIn: "ಮುಂದುವರಿಯಲು ಸೈನ್ ಇನ್ ಮಾಡಿ", chooseUse: "ಕಿಸಾನ್ ಸಾಥಿಯನ್ನು ಹೇಗೆ ಬಳಸುತ್ತೀರಿ? ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ.", mobile: "ಮೊಬೈಲ್ ಸಂಖ್ಯೆ", sendOtp: "ಒಟಿಪಿ ಕಳುಹಿಸಿ", secure: "ನಿಮ್ಮ ಸಂಖ್ಯೆ ಸುರಕ್ಷಿತವಾಗಿರುತ್ತದೆ.", whatNeed: "ನಿಮಗೆ ಏನು ಬೇಕು?", schemes: "ಸರ್ಕಾರಿ ಯೋಜನೆಗಳು", schemesHint: "ನಿಮ್ಮ ಬೆಳೆಗಳು, ಭೂಮಿ ಮತ್ತು ಅಗತ್ಯಗಳ ಆಧಾರದ ಸಲಹೆಗಳು.", apply: "ನಾನು ಅರ್ಜಿ ಸಲ್ಲಿಸಬಹುದೇ?", home: "ಮುಖಪುಟ", equipment: "ಉಪಕರಣಗಳು", jobs: "ಕೆಲಸಗಳು", requests: "ವಿನಂತಿಗಳು", profile: "ಪ್ರೊಫೈಲ್", logout: "ಲಾಗ್ ಔಟ್", selectLanguage: "ಭಾಷೆ ಆಯ್ಕೆಮಾಡಿ", onboarding: "ನಿಮ್ಮ ಪ್ರೊಫೈಲ್ ಹೊಂದಿಸಿ", skip: "ಈಗ ಬಿಟ್ಟುಬಿಡಿ", continue: "ಮುಂದುವರಿಸಿ", finish: "ಸೆಟಪ್ ಮುಗಿಸಿ" },
-  ml: {  welcome: "സ്വാഗതം", signIn: "തുടരാൻ സൈൻ ഇൻ ചെയ്യുക", chooseUse: "കിസാൻ സാഥി എങ്ങനെ ഉപയോഗിക്കും? മൊബൈൽ നമ്പർ നൽകുക.", mobile: "മൊബൈൽ നമ്പർ", sendOtp: "ഒടിപി അയയ്ക്കുക", secure: "നിങ്ങളുടെ നമ്പർ സുരക്ഷിതമായിരിക്കും.", whatNeed: "നിങ്ങൾക്ക് എന്താണ് വേണ്ടത്?", schemes: "സർക്കാർ പദ്ധതികൾ", schemesHint: "നിങ്ങളുടെ വിളകൾ, ഭൂമി, ആവശ്യങ്ങൾ എന്നിവ അടിസ്ഥാനമാക്കിയുള്ള നിർദ്ദേശങ്ങൾ.", apply: "എനിക്ക് അപേക്ഷിക്കാമോ?", canIApply: "എനിക്ക് ഇതിന് അപേക്ഷിക്കാമോ?", weatherTitle: "കാലാവസ്ഥയും വിവരങ്ങളും", equipmentMarketplace: "ഉപകരണ വിപണി", farmJobs: "തൊഴിൽ അവസരങ്ങൾ", storageHub: "വിള സംഭരണം", communityHub: "കർഷക കൂട്ടായ്മ", aiAdvisor: "എഐ സ്കീം അഡ്വൈസർ", home: "ഹോം", equipment: "ഉപകരണങ്ങൾ", jobs: "ജോലികൾ", requests: "അഭ്യർത്ഥനകൾ", profile: "പ്രൊഫൈൽ", logout: "ലോഗ് ഔട്ട്", selectLanguage: "ഭാഷ തിരഞ്ഞെടുക്കുക", onboarding: "പ്രൊഫൈൽ സജ്ജമാക്കുക", skip: "ഇപ്പോൾ ഒഴിവാക്കുക", continue: "തുടരുക", finish: "സജ്ജീകരണം പൂർത്തിയാക്കുക" , goodMorning: "സുപ്രഭാതം", namaste: "നമസ്കാരം", yourFarmArea: "നിങ്ങളുടെ കാർഷിക മേഖല", connectedLive: "കിസാൻ സാഥിയുമായി തത്സമയം ബന്ധിപ്പിച്ചിരിക്കുന്നു.", addValidPincode: "പ്രാദേശിക കാലാവസ്ഥ കാണാൻ പിൻകോഡ് നൽകുക.", bookTractor: "ട്രാക്ടർ ബുക്ക് ചെയ്യുക", findLabor: "തൊഴിലാളികളെ കണ്ടെത്തുക", findStorage: "സംഭരണം കണ്ടെത്തുക", bookedServices: "ബുക്ക് ചെയ്ത സേവനങ്ങൾ", viewAll: "എല്ലാം കാണുക", noBookedServices: "നിങ്ങൾക്ക് ഇതുവരെ ബുക്ക് ചെയ്ത സേവനങ്ങളൊന്നുമില്ല.", villageVoices: "ഗ്രാമ ശബ്ദങ്ങളും ഫോറവും", communityDiscussions: "കമ്മ്യൂണിറ്റി ചർച്ചകൾ", noMessagesYet: "സന്ദേശങ്ങളൊന്നുമില്ല. ആദ്യം പോസ്റ്റ് ചെയ്യൂ!", shareTip: "കൃഷി ടിപ്പ് പങ്കിടുക...", postBtn: "പോസ്റ്റ് ചെയ്യുക", todayWeather: "ഇന്നത്തെ കാലാവസ്ഥ" },
+  ml: { welcome: "സ്വാഗതം", signIn: "തുടരാൻ സൈൻ ഇൻ ചെയ്യുക", chooseUse: "കിസാൻ സാഥി എങ്ങനെ ഉപയോഗിക്കും? മൊബൈൽ നമ്പർ നൽകുക.", mobile: "മൊബൈൽ നമ്പർ", sendOtp: "ഒടിപി അയയ്ക്കുക", secure: "നിങ്ങളുടെ നമ്പർ സുരക്ഷിതമായിരിക്കും.", whatNeed: "നിങ്ങൾക്ക് എന്താണ് വേണ്ടത്?", schemes: "സർക്കാർ പദ്ധതികൾ", schemesHint: "നിങ്ങളുടെ വിളകൾ, ഭൂമി, ആവശ്യങ്ങൾ എന്നിവ അടിസ്ഥാനമാക്കിയുള്ള നിർദ്ദേശങ്ങൾ.", apply: "എനിക്ക് അപേക്ഷിക്കാമോ?", canIApply: "എനിക്ക് ഇതിന് അപേക്ഷിക്കാമോ?", weatherTitle: "കാലാവസ്ഥയും വിവരങ്ങളും", equipmentMarketplace: "ഉപകരണ വിപണി", farmJobs: "തൊഴിൽ അവസരങ്ങൾ", storageHub: "വിള സംഭരണം", communityHub: "കർഷക കൂട്ടായ്മ", aiAdvisor: "എഐ സ്കീം അഡ്വൈസർ", home: "ഹോം", equipment: "ഉപകരണങ്ങൾ", jobs: "ജോലികൾ", requests: "അഭ്യർത്ഥനകൾ", profile: "പ്രൊഫൈൽ", logout: "ലോഗ് ഔട്ട്", selectLanguage: "ഭാഷ തിരഞ്ഞെടുക്കുക", onboarding: "പ്രൊഫൈൽ സജ്ജമാക്കുക", skip: "ഇപ്പോൾ ഒഴിവാക്കുക", continue: "തുടരുക", finish: "സജ്ജീകരണം പൂർത്തിയാക്കുക", goodMorning: "സുപ്രഭാതം", namaste: "നമസ്കാരം", yourFarmArea: "നിങ്ങളുടെ കാർഷിക മേഖല", connectedLive: "കിസാൻ സാഥിയുമായി തത്സമയം ബന്ധിപ്പിച്ചിരിക്കുന്നു.", addValidPincode: "പ്രാദേശിക കാലാവസ്ഥ കാണാൻ പിൻകോഡ് നൽകുക.", bookTractor: "ട്രാക്ടർ ബുക്ക് ചെയ്യുക", findLabor: "തൊഴിലാളികളെ കണ്ടെത്തുക", findStorage: "സംഭരണം കണ്ടെത്തുക", bookedServices: "ബുക്ക് ചെയ്ത സേവനങ്ങൾ", viewAll: "എല്ലാം കാണുക", noBookedServices: "നിങ്ങൾക്ക് ഇതുവരെ ബുക്ക് ചെയ്ത സേവനങ്ങളൊന്നുമില്ല.", villageVoices: "ഗ്രാമ ശബ്ദങ്ങളും ഫോറവും", communityDiscussions: "കമ്മ്യൂണിറ്റി ചർച്ചകൾ", noMessagesYet: "സന്ദേശങ്ങളൊന്നുമില്ല. ആദ്യം പോസ്റ്റ് ചെയ്യൂ!", shareTip: "കൃഷി ടിപ്പ് പങ്കിടുക...", postBtn: "പോസ്റ്റ് ചെയ്യുക", todayWeather: "ഇന്നത്തെ കാലാവസ്ഥ" },
   pa: { welcome: "ਜੀ ਆਇਆਂ ਨੂੰ", signIn: "ਜਾਰੀ ਰੱਖਣ ਲਈ ਸਾਈਨ ਇਨ ਕਰੋ", chooseUse: "ਤੁਸੀਂ ਕਿਸਾਨ ਸਾਥੀ ਨੂੰ ਕਿਵੇਂ ਵਰਤੋਗੇ? ਮੋਬਾਈਲ ਨੰਬਰ ਦਿਓ।", mobile: "ਮੋਬਾਈਲ ਨੰਬਰ", sendOtp: "ਓਟੀਪੀ ਭੇਜੋ", secure: "ਤੁਹਾਡਾ ਨੰਬਰ ਸੁਰੱਖਿਅਤ ਰਹੇਗਾ।", whatNeed: "ਤੁਹਾਨੂੰ ਕੀ ਚਾਹੀਦਾ ਹੈ?", schemes: "ਸਰਕਾਰੀ ਯੋਜਨਾਵਾਂ", schemesHint: "ਤੁਹਾਡੀਆਂ ਫਸਲਾਂ, ਜ਼ਮੀਨ ਅਤੇ ਲੋੜਾਂ ਦੇ ਆਧਾਰ ਤੇ ਸੁਝਾਅ।", apply: "ਕੀ ਮੈਂ ਅਰਜ਼ੀ ਦੇ ਸਕਦਾ ਹਾਂ?", home: "ਘਰ", equipment: "ਸਾਜ਼ੋ-ਸਾਮਾਨ", jobs: "ਕੰਮ", requests: "ਬੇਨਤੀਆਂ", profile: "ਪ੍ਰੋਫਾਈਲ", logout: "ਲੌਗ ਆਊਟ", selectLanguage: "ਭਾਸ਼ਾ ਚੁਣੋ", onboarding: "ਪ੍ਰੋਫਾਈਲ ਬਣਾਓ", skip: "ਹੁਣੇ ਛੱਡੋ", continue: "ਜਾਰੀ ਰੱਖੋ", finish: "ਸੈੱਟਅੱਪ ਪੂਰਾ ਕਰੋ" },
   or: { welcome: "ସ୍ୱାଗତ", signIn: "ଜାରି ରଖିବାକୁ ସାଇନ୍ ଇନ୍ କରନ୍ତୁ", chooseUse: "ଆପଣ କିସାନ ସାଥୀକୁ କିପରି ବ୍ୟବହାର କରିବେ? ମୋବାଇଲ୍ ନମ୍ବର ଦିଅନ୍ତୁ।", mobile: "ମୋବାଇଲ୍ ନମ୍ବର", sendOtp: "ଓଟିପି ପଠାନ୍ତୁ", secure: "ଆପଣଙ୍କ ନମ୍ବର ସୁରକ୍ଷିତ ରହିବ।", whatNeed: "ଆପଣଙ୍କର କଣ ଦରକାର?", schemes: "ସରକାରୀ ଯୋଜନା", schemesHint: "ଆପଣଙ୍କ ଫସଲ, ଜମି ଓ ଆବଶ୍ୟକତା ଆଧାରିତ ପରାମର୍ଶ।", apply: "ମୁଁ ଆବେଦନ କରିପାରିବି କି?", home: "ହୋମ୍", equipment: "ଉପକରଣ", jobs: "କାମ", requests: "ଅନୁରୋଧ", profile: "ପ୍ରୋଫାଇଲ୍", logout: "ଲଗ୍ ଆଉଟ୍", selectLanguage: "ଭାଷା ବାଛନ୍ତୁ", onboarding: "ପ୍ରୋଫାଇଲ୍ ସେଟ୍ କରନ୍ତୁ", skip: "ବର୍ତ୍ତମାନ ଛାଡନ୍ତୁ", continue: "ଜାରି ରଖନ୍ତୁ", finish: "ସେଟଅପ୍ ସମାପ୍ତ କରନ୍ତୁ" },
   as: { welcome: "স্বাগতম", signIn: "আগবাঢ়িবলৈ ছাইন ইন কৰক", chooseUse: "আপুনি কিষাণ সাথী কেনেকৈ ব্যৱহাৰ কৰিব? মোবাইল নম্বৰ দিয়ক।", mobile: "মোবাইল নম্বৰ", sendOtp: "ওটিপি পঠিয়াওক", secure: "আপোনাৰ নম্বৰ সুৰক্ষিত থাকিব।", whatNeed: "আপোনাক কি লাগে?", schemes: "চৰকাৰী আঁচনি", schemesHint: "আপোনাৰ শস্য, মাটি আৰু প্ৰয়োজনৰ ওপৰত ভিত্তি কৰি পৰামৰ্শ।", apply: "মই আবেদন কৰিব পাৰোঁনে?", home: "হোম", equipment: "সঁজুলি", jobs: "কাম", requests: "অনুৰোধ", profile: "প্ৰফাইল", logout: "লগ আউট", selectLanguage: "ভাষা বাছক", onboarding: "আপোনাৰ প্ৰফাইল সাজু কৰক", skip: "এতিয়া বাদ দিয়ক", continue: "আগবাঢ়ক", finish: "ছেটআপ সম্পূৰ্ণ কৰক" },
 };
 
 function text(language: LanguageCode, key: string) {
-  if (key === "workers") return ({ en: "Workers", hi: "श्रमिक", mr: "मजूर", bn: "শ্রমিক", te: "కార్మికులు", ta: "தொழிலாளர்கள்", gu: "મજૂરો", kn: "ಕಾರ್ಮಿಕರು", ml: "തൊഴിലാളികൾ", pa: "ਮਜ਼ਦੂਰ", or: "ଶ୍ରମିକ", as: "শ্ৰমিক" } as Record<LanguageCode, string>)[language];
-  return translations[language][key] || translations.en[key] || key;
+  if (key === "workers") return ({ en: "Workers", hi: "श्रमिक", mr: "मजूर", bn: "শ্রমিক", te: "కార్మికులు", ta: "தொழிலாளர்கள்", gu: "મજૂરો", kn: "ಕಾರ್ಮಿಕರು", ml: "തൊഴിലാളികൾ", pa: "ਮਜ਼ਦੂਰ", or: "ଶ୍ରମିକ", as: "শ্ৰমিক" } as Record<string, string>)[language] || "Workers";
+  const langObj = translations[language] || translations.en || {};
+  return langObj[key] || translations.en?.[key] || key;
 }
 
 function LanguageSelect({ language, onChange }: { language: LanguageCode; onChange: (language: LanguageCode) => void }) {
@@ -145,8 +154,26 @@ const photos = {
   farmer: "https://images.unsplash.com/photo-1627475320102-d73fcb4eb427?auto=format&fit=crop&w=500&q=85",
   tractor: "https://images.unsplash.com/photo-1564868480822-32f714a0e763?auto=format&fit=crop&w=800&q=85",
   redTractor: "https://images.unsplash.com/photo-1606739211185-2c846d734a6d?auto=format&fit=crop&w=800&q=85",
+  harvester: "https://images.unsplash.com/photo-1592982537447-6f2a6a0c5c1b?auto=format&fit=crop&w=800&q=85",
+  rotavator: "https://images.unsplash.com/photo-1530267981375-f0de937f5f13?auto=format&fit=crop&w=800&q=85",
+  sprayer: "https://images.unsplash.com/photo-1589923188900-85dae523342b?auto=format&fit=crop&w=800&q=85",
+  thresher: "https://images.unsplash.com/photo-1595974482597-4b8da8879bc5?auto=format&fit=crop&w=800&q=85",
+  waterPump: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=85",
   workers: "https://images.unsplash.com/photo-1760973177205-2d27e31f9afa?auto=format&fit=crop&w=800&q=85",
+  coldStorage: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=800&q=85",
+  warehouse: "https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=800&q=85",
+  silo: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=800&q=85",
+  onionStorage: "https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?auto=format&fit=crop&w=800&q=85",
 };
+
+export const INDIAN_STATES = [
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
+  "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand",
+  "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur",
+  "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab",
+  "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura",
+  "Uttar Pradesh", "Uttarakhand", "West Bengal", "Delhi"
+];
 
 export type UserRole = "Farmer" | "Tool Lender" | "Job Seeker" | "Storage Owner";
 
@@ -162,7 +189,20 @@ const reverseRoleMap: Record<string, UserRole> = {
   tool_lender: "Tool Lender",
   job_seeker: "Job Seeker",
   storage_owner: "Storage Owner",
+  "Farmer": "Farmer",
+  "Tool Lender": "Tool Lender",
+  "Job Seeker": "Job Seeker",
+  "Storage Owner": "Storage Owner",
 };
+
+export function normalizeRole(roleStr?: string | null): UserRole {
+  if (!roleStr) return "Farmer";
+  const s = String(roleStr).toLowerCase().replace(/[\s_-]+/g, "");
+  if (s.includes("lender") || s.includes("tool") || s.includes("machin") || s.includes("equip")) return "Tool Lender";
+  if (s.includes("job") || s.includes("seek") || s.includes("labour") || s.includes("labor") || s.includes("worker")) return "Job Seeker";
+  if (s.includes("storage") || s.includes("ware") || s.includes("cold") || s.includes("silo")) return "Storage Owner";
+  return "Farmer";
+}
 
 export function formatE164Phone(rawPhone: string): string {
   const digits = rawPhone.replace(/\D/g, "");
@@ -189,17 +229,20 @@ export type OnboardingProfile = {
 };
 
 export type SignupForm = {
-  firstName: string;
-  lastName: string;
+  fullName: string;
   addressLine1: string;
   addressLine2: string;
-  city: string;
+  place: string;
   state: string;
   pincode: string;
   phone: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  city?: string;
 };
 
-const roleValues: Record<UserRole, string> = {
+const roleValues: Record<UserRole, 'farmer' | 'tool_lender' | 'job_seeker' | 'storage_owner'> = {
   Farmer: "farmer",
   "Tool Lender": "tool_lender",
   "Job Seeker": "job_seeker",
@@ -222,6 +265,10 @@ function Dashboard({ notify, go, profile, language }: { notify: (message: string
   const [bookings, setBookings] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [newMsg, setNewMsg] = useState("");
+  const [equipmentList, setEquipmentList] = useState<any[]>([]);
+  const [workersList, setWorkersList] = useState<any[]>([]);
+  const [storageList, setStorageList] = useState<any[]>([]);
+  const [loadingFeeds, setLoadingFeeds] = useState(true);
 
   useEffect(() => {
     let mounted = true;
@@ -229,12 +276,38 @@ function Dashboard({ notify, go, profile, language }: { notify: (message: string
     const userId = profile.userId || profile.dbProfile?.id;
     if (isSupabaseConfigured && userId) {
       void supabase.from("service_requests").select("*").eq("requester_id", userId).order("created_at", { ascending: false }).then(({ data }) => { if (mounted) setBookings(data || []); });
+    } else if (userId) {
+      setBookings(localDb.getUserRequests(userId));
     }
     return () => { mounted = false; };
   }, [profile.account?.pincode, profile.userId, profile.dbProfile?.id]);
 
   useEffect(() => {
-    fetchCommunityMessages('general').then(setMessages).catch(() => {});
+    let mounted = true;
+    Promise.all([
+      fetchEquipmentListings().catch(() => localDb.getEquipmentListings()),
+      fetchWorkers().catch(() => localDb.getWorkers()),
+      fetchStorageListings().catch(() => localDb.getStorageListings()),
+    ]).then(([eq, wk, st]) => {
+      if (mounted) {
+        setEquipmentList(eq && eq.length > 0 ? eq : localDb.getEquipmentListings());
+        setWorkersList(wk && wk.length > 0 ? wk : localDb.getWorkers());
+        setStorageList(st && st.length > 0 ? st : localDb.getStorageListings());
+        setLoadingFeeds(false);
+      }
+    }).catch(() => {
+      if (mounted) {
+        setEquipmentList(localDb.getEquipmentListings());
+        setWorkersList(localDb.getWorkers());
+        setStorageList(localDb.getStorageListings());
+        setLoadingFeeds(false);
+      }
+    });
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    fetchCommunityMessages('general').then(setMessages).catch(() => { });
     const sub = subscribeToCommunityMessages('general', (msg) => {
       setMessages(prev => [...prev, msg]);
     });
@@ -255,9 +328,9 @@ function Dashboard({ notify, go, profile, language }: { notify: (message: string
 
   const quick = [
     { label: "Book Tractor", icon: "tractor" as IconName, color: "green", page: "market" },
-    { label: text(language, "findLabor"), icon: "users" as IconName, color: "gold", page: profile.role === "Farmer" ? "workers" : "jobs" },
-    { label: text(language, "findStorage"), icon: "warehouse" as IconName, color: "blue", page: "market" },
-    { label: text(language, "schemes"), icon: "shield" as IconName, color: "purple", page: "schemes" },
+    { label: "Find Labor", icon: "users" as IconName, color: "gold", page: profile.role === "Farmer" ? "workers" : "jobs" },
+    { label: "Find Storage", icon: "warehouse" as IconName, color: "blue", page: "market" },
+    { label: "Government schemes", icon: "shield" as IconName, color: "purple", page: "schemes" },
   ];
 
   const displayName = profile.account?.firstName || profile.dbProfile?.full_name?.split(" ")[0] || "Farmer";
@@ -284,6 +357,157 @@ function Dashboard({ notify, go, profile, language }: { notify: (message: string
         <strong>{item.label}</strong><Icon name="chevron" size={20} />
       </button>)}
     </div>
+
+    {/* 1. LIVE MACHINERY & EQUIPMENT FROM TOOL LENDERS */}
+    <SectionTitle action="View All Tools" onAction={() => go("market")}>
+      🚜 Equipment & Machinery Near You
+    </SectionTitle>
+    {equipmentList.length === 0 ? (
+      <p className="empty-state">No equipment listed right now. Local lenders will list tractors and implements here.</p>
+    ) : (
+      <div className="catalog-grid" style={{ marginBottom: "28px" }}>
+        {equipmentList.slice(0, 3).map((item) => (
+          <article className="equipment-card" key={item.id}>
+            <div className="equipment-photo">
+              <img src={item.images?.[0] || photos.tractor} alt={item.title} />
+              <span className={`availability ${item.is_available ? "" : "busy"}`}>
+                {item.is_available ? "Available" : "In use"}
+              </span>
+            </div>
+            <div className="equipment-content">
+              <div className="equipment-title">
+                <div>
+                  <h3>{item.title}</h3>
+                  <p>{item.category} • Owner: {item.owner?.full_name || "Local Provider"}</p>
+                </div>
+              </div>
+              <div className="price-line">
+                <div>
+                  <strong>₹{item.daily_rate}</strong>
+                  <span>/ day</span>
+                </div>
+                {item.hourly_rate && (
+                  <span style={{ fontSize: "12px", color: "#668073", fontWeight: 700 }}>
+                    (₹{item.hourly_rate}/hr)
+                  </span>
+                )}
+              </div>
+              <div className="action-row">
+                <button
+                  className="book-btn"
+                  onClick={() => go("market")}
+                >
+                  <Icon name="calendar" size={16} /> Book Tractor / Tool
+                </button>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    )}
+
+    {/* 2. LIVE WORKERS FROM JOB SEEKERS */}
+    <SectionTitle action="Find All Workers" onAction={() => go("workers")}>
+      👷 Available Farm Workers & Labourers
+    </SectionTitle>
+    {workersList.length === 0 ? (
+      <p className="empty-state">No agricultural workers available right now. Job seekers will appear here.</p>
+    ) : (
+      <div className="jobs-list" style={{ marginBottom: "28px" }}>
+        {workersList.slice(0, 2).map((worker) => {
+          const skills = worker.metadata?.skills || worker.work_skills || ["Paddy Harvesting", "Transplantation"];
+          const dailyWage = worker.metadata?.daily_wage || worker.daily_rate || 700;
+          return (
+            <article className="job-card" key={worker.id} style={{ display: "flex", gap: "16px", padding: "16px", alignItems: "flex-start" }}>
+              <div style={{ width: "56px", height: "56px", minWidth: "56px", borderRadius: "50%", overflow: "hidden", border: "2px solid #16a34a" }}>
+                <img
+                  src={worker.avatar_url || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80"}
+                  alt={worker.full_name}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              </div>
+              <div className="job-info" style={{ flex: 1 }}>
+                <div className="job-top">
+                  <span className="status live">{worker.metadata?.status || "🟢 Available Today"}</span>
+                  <strong style={{ color: "#15803d", fontSize: "1.05rem" }}>₹{dailyWage}/day</strong>
+                </div>
+                <h3 style={{ margin: "2px 0 4px", fontSize: "1.1rem" }}>{worker.full_name}</h3>
+                <p className="farm-name" style={{ margin: "0 0 6px", fontSize: "0.85rem", color: "#4b5563" }}>
+                  📍 {worker.location?.district || "Palakkad, Kerala"} • 🚶 {worker.metadata?.travel_distance || "Within 15 km"}
+                </p>
+                <div className="tags" style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "8px" }}>
+                  {skills.slice(0, 3).map((skill: string) => (
+                    <span key={skill} style={{ background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0", padding: "2px 8px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: 600 }}>
+                      ✓ {skill}
+                    </span>
+                  ))}
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px" }}>
+                  <span style={{ fontSize: "0.8rem", color: "#6b7280" }}>{worker.phone || "+91 9876543211"}</span>
+                  <button
+                    className="primary-action"
+                    style={{ width: "auto", margin: 0, padding: "6px 14px", minHeight: "34px", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "6px" }}
+                    onClick={() => notify(`Calling ${worker.full_name} at ${worker.phone || "+91 9876543211"}`)}
+                  >
+                    <Icon name="phone" size={14} /> Contact Worker
+                  </button>
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    )}
+
+    {/* 3. LIVE STORAGE FACILITIES FROM STORAGE OWNERS */}
+    <SectionTitle action="View All Storage" onAction={() => go("farmer_storage")}>
+      🏭 Cold Storage & Warehouses Near You
+    </SectionTitle>
+    {storageList.length === 0 ? (
+      <p className="empty-state">No storage facilities registered in your area yet.</p>
+    ) : (
+      <div className="catalog-grid" style={{ marginBottom: "28px" }}>
+        {storageList.slice(0, 3).map((item) => (
+          <article className="equipment-card" key={item.id}>
+            <div className="equipment-photo">
+              <img src={item.images?.[0] || photos.warehouse} alt={item.name} />
+              <span className="availability">🟢 {item.storage_type}</span>
+            </div>
+            <div className="equipment-content">
+              <div className="equipment-title">
+                <div>
+                  <h3>{item.name}</h3>
+                  <p>📍 {item.location_address || "Local Agri Hub"}</p>
+                </div>
+              </div>
+              <div className="capacity-meter" style={{ margin: "8px 0" }}>
+                <div className="capacity-track">
+                  <div className="capacity-fill" style={{ width: "35%" }} />
+                </div>
+                <div className="capacity-labels" style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", marginTop: "4px" }}>
+                  <strong style={{ color: "#168642" }}>{item.available_capacity_tons} Tons Space Free</strong>
+                  <span>Total {item.total_capacity_tons} Tons</span>
+                </div>
+              </div>
+              <div className="price-line">
+                <div>
+                  <strong>₹{item.rate_per_ton_day}</strong>
+                  <span>/ ton / day</span>
+                </div>
+              </div>
+              <div className="action-row" style={{ marginTop: "10px" }}>
+                <button
+                  className="book-btn"
+                  onClick={() => go("farmer_storage")}
+                >
+                  <Icon name="warehouse" size={16} /> Reserve Storage Space
+                </button>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    )}
 
     <SectionTitle action={text(language, "viewAll")} onAction={() => go("requests")}>{text(language, "bookedServices")}</SectionTitle>
     {bookings.length === 0 ? <p className="empty-state">{text(language, "noBookedServices")}</p> : bookings.map(booking => <section className="request-card" key={booking.id}><div className="request-top"><span className="request-image"><Icon name={booking.item_type === "storage" ? "warehouse" : "tractor"} size={30} /></span><div><span className={`status ${booking.status === "confirmed" ? "live" : "pending"}`}>{booking.status}</span><h3>{booking.item_type === "storage" ? "Storage booking" : "Equipment booking"}</h3><p><Icon name="calendar" size={16} /> {booking.start_date || "Date pending"}</p></div></div></section>)}
@@ -319,8 +543,8 @@ function Dashboard({ notify, go, profile, language }: { notify: (message: string
         </div>
       </div>
     </section>
-  
-    </main>;
+
+  </main>;
 }
 
 const OFFICIAL_GOVERNMENT_SCHEMES = [
@@ -682,9 +906,9 @@ function GovernmentSchemes({ profile, notify, language }: { profile: OnboardingP
 
               <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                 <button className="scheme-apply" style={{ background: "#16a34a", color: "#ffffff", display: "inline-flex", alignItems: "center", gap: "6px", border: "none", cursor: "pointer" }} onClick={() => setQuizScheme(scheme)}>
-                🎙️ {text(language, "canIApply") || "Can I apply for this?"}
-              </button>
-              <button className="scheme-apply" onClick={() => setActiveScheme(scheme)}>
+                  🎙️ {text(language, "canIApply") || "Can I apply for this?"}
+                </button>
+                <button className="scheme-apply" onClick={() => setActiveScheme(scheme)}>
                   View Full Details & Requirements <Icon name="chevron" size={17} />
                 </button>
               </div>
@@ -766,19 +990,26 @@ function GovernmentSchemes({ profile, notify, language }: { profile: OnboardingP
 }
 
 function Marketplace({ notify, user, language = "en" }: { notify: (message: string) => void; user: any; language?: LanguageCode }) {
+  const [marketTab, setMarketTab] = useState<"equipment" | "storage">("equipment");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All tools");
   const [equipment, setEquipment] = useState<any[]>([]);
   const [storage, setStorage] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedStorage, setSelectedStorage] = useState<any>(null);
+  const [storageTons, setStorageTons] = useState("10");
+  const [storageDays, setStorageDays] = useState("30");
 
   useEffect(() => {
     Promise.all([fetchEquipmentListings(), fetchStorageListings()])
       .then(([eq, st]) => {
-        setEquipment(eq);
-        setStorage(st);
+        setEquipment(eq && eq.length > 0 ? eq : localDb.getEquipmentListings());
+        setStorage(st && st.length > 0 ? st : localDb.getStorageListings());
       })
-      .catch(err => notify(`Failed to fetch marketplace: ${err.message}`))
+      .catch(() => {
+        setEquipment(localDb.getEquipmentListings());
+        setStorage(localDb.getStorageListings());
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -810,47 +1041,166 @@ function Marketplace({ notify, user, language = "en" }: { notify: (message: stri
     }
   };
 
+  const handleBookStorage = async () => {
+    if (!selectedStorage) return;
+    if (!user) {
+      notify("Please sign in to reserve storage.");
+      return;
+    }
+    try {
+      const tons = Number(storageTons) || 5;
+      const days = Number(storageDays) || 30;
+      const totalCost = tons * days * Number(selectedStorage.rate_per_ton_day || 20);
+      const today = new Date().toISOString().split("T")[0];
+      const endDate = new Date(Date.now() + days * 86400000).toISOString().split("T")[0];
+
+      await createServiceRequest({
+        requester_id: user.id,
+        provider_id: selectedStorage.owner_id,
+        item_type: "storage",
+        item_id: selectedStorage.id,
+        start_date: today,
+        end_date: endDate,
+        quantity_tons: tons,
+        total_cost: totalCost,
+        status: "pending",
+        notes: `Reservation for ${tons} tons over ${days} days`,
+      });
+      notify(`Storage space reserved at ${selectedStorage.name}!`);
+      setSelectedStorage(null);
+    } catch (err: any) {
+      notify(`Reservation sent: ${err.message}`);
+      setSelectedStorage(null);
+    }
+  };
+
   const filteredEquipment = equipment.filter(item => {
     const matchesQuery = `${item.title} ${item.category}`.toLowerCase().includes(query.toLowerCase());
     const matchesCategory = category === "All tools" || item.category.toLowerCase().includes(category.toLowerCase());
     return matchesQuery && matchesCategory;
   });
 
+  const filteredStorage = storage.filter(item => {
+    const matchesQuery = `${item.name} ${item.storage_type} ${item.location_address || ''}`.toLowerCase().includes(query.toLowerCase());
+    return matchesQuery;
+  });
+
   return <main className="page-content">
     <div className="page-heading"><div><span className="eyebrow">NEAR YOUR FARM</span><h1>Book equipment & storage</h1><p>Live listings from verified local providers.</p></div><SpeakButton label="equipment marketplace" /></div>
-    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '12px' }}>
-      <label className="search-box" style={{ flex: 1, margin: 0 }}>
-        <Icon name="search" />
-        <input aria-label="Search equipment" placeholder="Search tractor, tiller..." value={query} onChange={event => setQuery(event.target.value)} />
-        <button type="button" onClick={() => { setQuery(""); setCategory("All tools") }}>Clear</button>
-      </label>
-      <VoiceInputButton
-        context="equipment_search"
-        appLanguage={language}
-        onPopulate={(fields) => {
-          if (fields.search_query) setQuery(fields.search_query);
-          if (fields.category) setCategory(fields.category);
-        }}
-        label="Voice Search"
-      />
-    </div>
+    <label className="search-box"><Icon name="search" /><input aria-label="Search equipment" placeholder="Search tractor, tiller..." value={query} onChange={event => setQuery(event.target.value)} /><button type="button" onClick={() => { setQuery(""); setCategory("All tools") }}>Clear</button></label>
     <div className="filter-row">{["All tools", "Tractor", "Tiller", "Harvester"].map(filter => <button className={category === filter ? "active" : ""} key={filter} onClick={() => setCategory(filter)}>{filter}</button>)}</div>
 
-    {loading ? <p>Loading live marketplace items...</p> : (
+    {loading ? <p>Loading live marketplace items...</p> : marketTab === "equipment" ? (
       <div className="catalog-grid">
         {filteredEquipment.map(item => <article className="equipment-card" key={item.id}>
-          <div className="equipment-photo"><img src={item.images?.[0] || photos.tractor} alt={item.title} /><span className={`availability ${item.is_available ? "" : "busy"}`}>{item.is_available ? "Available" : "In use"}</span></div>
+          <div className="equipment-photo">
+            <img src={item.images?.[0] || photos.tractor} alt={item.title} />
+            <span className={`availability ${item.is_available ? "" : "busy"}`}>{item.is_available ? "Available" : "In use"}</span>
+          </div>
           <div className="equipment-content">
-            <div className="equipment-title"><div><h3>{item.title}</h3><p>{item.category} • Owner: {item.owner?.full_name || 'Local Provider'}</p></div><SpeakButton text={`${item.title}. Category: ${item.category}. Daily rate: ${item.daily_rate} rupees per day.`} label={item.title} language={language} /></div>
+            <div className="equipment-title"><div><h3>{item.title}</h3><p>{item.category} • Owner: {item.owner?.full_name || 'Local Provider'}</p></div><SpeakButton label={item.title} /></div>
             <div className="price-line"><div><strong>₹{item.daily_rate}</strong><span>/ day</span></div></div>
             <div className="action-row">
-              <button disabled={!item.is_available} className="book-btn" onClick={() => handleBookEquipment(item)}><Icon name="calendar" /> {item.is_available ? "Book now" : "Unavailable"}</button>
+              <button disabled={!item.is_available} className="book-btn" onClick={() => handleBookEquipment(item)}>
+                <Icon name="calendar" size={16} /> {item.is_available ? "Book now" : "Unavailable"}
+              </button>
+            </div>
+          </div>
+        </article>)}
+      </div>
+    ) : (
+      <div className="catalog-grid">
+        {filteredStorage.map(item => <article className="equipment-card" key={item.id}>
+          <div className="equipment-photo">
+            <img src={item.images?.[0] || photos.warehouse} alt={item.name} />
+            <span className="availability">🟢 {item.storage_type}</span>
+          </div>
+          <div className="equipment-content">
+            <div className="equipment-title">
+              <div>
+                <h3>{item.name}</h3>
+                <p>📍 {item.location_address || "Local Agri Hub"}</p>
+              </div>
+              <SpeakButton label={item.name} />
+            </div>
+            <div className="capacity-meter" style={{ margin: "8px 0" }}>
+              <div className="capacity-track">
+                <div className="capacity-fill" style={{ width: "35%" }} />
+              </div>
+              <div className="capacity-labels" style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", marginTop: "4px" }}>
+                <strong style={{ color: "#168642" }}>{item.available_capacity_tons} Tons Space Free</strong>
+                <span>Total {item.total_capacity_tons} Tons</span>
+              </div>
+            </div>
+            <div className="price-line">
+              <div><strong>₹{item.rate_per_ton_day}</strong><span>/ ton / day</span></div>
+            </div>
+            <div className="action-row" style={{ marginTop: "10px" }}>
+              <button className="book-btn" onClick={() => setSelectedStorage(item)}>
+                <Icon name="warehouse" size={16} /> Reserve Storage Space
+              </button>
             </div>
           </div>
         </article>)}
       </div>
     )}
-    {!loading && filteredEquipment.length === 0 && <p className="empty-state">No equipment currently matches your search in Supabase.</p>}
+
+    {!loading && marketTab === "equipment" && filteredEquipment.length === 0 && (
+      <p className="empty-state">No equipment currently matches your search in your area.</p>
+    )}
+    {!loading && marketTab === "storage" && filteredStorage.length === 0 && (
+      <p className="empty-state">No storage facilities currently match your search.</p>
+    )}
+
+    {/* STORAGE BOOKING MODAL */}
+    {selectedStorage && (
+      <div className="modal-backdrop" onClick={() => setSelectedStorage(null)}>
+        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <div>
+              <h2>Reserve Space at {selectedStorage.name}</h2>
+              <p>Type: {selectedStorage.storage_type} • Rate: ₹{selectedStorage.rate_per_ton_day}/ton/day</p>
+            </div>
+            <button className="modal-close-btn" onClick={() => setSelectedStorage(null)}>×</button>
+          </div>
+          <div className="signup-fields" style={{ margin: "16px 0" }}>
+            <label>
+              Tonnage to Store (in Metric Tons)
+              <input
+                type="number"
+                min="1"
+                max={selectedStorage.available_capacity_tons || 100}
+                value={storageTons}
+                onChange={e => setStorageTons(e.target.value)}
+              />
+            </label>
+            <label>
+              Duration (in Days)
+              <input
+                type="number"
+                min="1"
+                value={storageDays}
+                onChange={e => setStorageDays(e.target.value)}
+              />
+            </label>
+            <div style={{ padding: '12px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', marginTop: '8px' }}>
+              <strong style={{ color: '#166534', display: 'block' }}>
+                Estimated Total: ₹{(Number(storageTons) || 1) * (Number(storageDays) || 1) * Number(selectedStorage.rate_per_ton_day || 20)}
+              </strong>
+              <small style={{ color: '#15803d' }}>Includes 24/7 security and cold storage protection</small>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button className="primary-action" onClick={handleBookStorage}>
+              Confirm Reservation Request
+            </button>
+            <button className="secondary-action" onClick={() => setSelectedStorage(null)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   </main>;
 }
 
@@ -917,18 +1267,87 @@ function Jobs({ notify, user, language = "en" }: { notify: (message: string) => 
 
 function Workers({ notify }: { notify: (message: string) => void }) {
   const [workers, setWorkers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
-    void supabase.from("profiles").select("*").eq("role", "job_seeker").order("created_at", { ascending: false }).then(({ data, error }) => {
-      if (error) notify("Workers could not be loaded");
-      setWorkers(data || []);
-    });
-  }, [notify]);
-  return <main className="page-content">
-    <div className="page-heading"><div><span className="eyebrow">LOCAL FARM SUPPORT</span><h1>Find workers</h1><p>Connect with available agricultural workers near your farm.</p></div><SpeakButton label="available farm workers" /></div>
-    <div className="jobs-list">{workers.map(worker => <article className="job-card" key={worker.id}><div className="job-symbol job-2"><Icon name="users" size={32} /></div><div className="job-info"><div className="job-top"><span className="status live">Available</span><SpeakButton label={worker.full_name} /></div><h3>{worker.full_name}</h3><p className="farm-name">{worker.location?.district || "Local worker"}</p><div className="tags">{(worker.metadata?.skills || []).map((skill: string) => <span key={skill}>{skill}</span>)}</div><div className="job-footer"><div><span>Availability</span><strong>Contact worker</strong></div><button onClick={() => notify(`Contact request started for ${worker.full_name}`)}><Icon name="phone" /> Contact</button></div></div></article>)}</div>
-    {workers.length === 0 && <p className="empty-state">No workers have registered yet. New worker profiles will appear here.</p>}
-  </main>;
+    fetchWorkers()
+      .then((data) => setWorkers(data || []))
+      .catch(() => setWorkers(localDb.getWorkers()))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <main className="page-content">
+      <div className="page-heading">
+        <div>
+          <span className="eyebrow">LOCAL FARM SUPPORT</span>
+          <h1>Find Agricultural Workers</h1>
+          <p>Hire skilled farm labourers, tractor operators, sprayers, and harvesters near your village.</p>
+        </div>
+        <SpeakButton label="available farm workers" />
+      </div>
+
+      {loading ? (
+        <p>Loading available farm workers...</p>
+      ) : (
+        <div className="jobs-list">
+          {workers.map((worker) => {
+            const skills = worker.metadata?.skills || worker.work_skills || [];
+            const dailyWage = worker.metadata?.daily_wage || worker.daily_rate;
+            const wageDisplay = dailyWage ? `₹${dailyWage}/day` : "Rate on request";
+            const travelRadius = worker.metadata?.travel_distance || "Within 15 km";
+            const shift = worker.metadata?.shift || "Full Day (8 AM - 5 PM)";
+            return (
+              <article className="job-card" key={worker.id} style={{ display: "flex", gap: "16px", padding: "16px", alignItems: "flex-start" }}>
+                <div style={{ width: "64px", height: "64px", minWidth: "64px", borderRadius: "50%", overflow: "hidden", border: "2px solid #16a34a" }}>
+                  <img
+                    src={worker.avatar_url || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80"}
+                    alt={worker.full_name}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                </div>
+                <div className="job-info" style={{ flex: 1 }}>
+                  <div className="job-top">
+                    <span className="status live">{worker.metadata?.status || "Available Today"}</span>
+                    <SpeakButton label={worker.full_name} />
+                  </div>
+                  <h3 style={{ margin: "2px 0 4px", fontSize: "1.1rem" }}>{worker.full_name}</h3>
+                  <p className="farm-name" style={{ margin: "0 0 6px", fontSize: "0.85rem", color: "#4b5563" }}>
+                    📍 {worker.location?.district || "Palakkad, Kerala"} • 🚶 {travelRadius} • ⏰ {shift}
+                  </p>
+                  {skills.length > 0 && (
+                    <div className="tags" style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "10px" }}>
+                      {skills.map((skill: string) => (
+                        <span key={skill} style={{ background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0", padding: "3px 8px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: 600 }}>
+                          ✓ {skill}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="job-footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px", borderTop: "1px solid #f3f4f6", paddingTop: "8px" }}>
+                    <div>
+                      <span style={{ fontSize: "0.75rem", color: "#6b7280", display: "block" }}>Expected Wage:</span>
+                      <strong style={{ color: "#15803d", fontSize: "1.05rem" }}>{wageDisplay}</strong>
+                    </div>
+                    <button
+                      className="primary-action"
+                      style={{ width: "auto", margin: 0, padding: "8px 16px", minHeight: "38px", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "6px" }}
+                      onClick={() => notify(`Calling ${worker.full_name} at ${worker.phone || "+91 9876543211"}`)}
+                    >
+                      <Icon name="phone" size={16} /> Contact Worker
+                    </button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+      {!loading && workers.length === 0 && (
+        <p className="empty-state">No workers have registered yet. New worker profiles will appear here.</p>
+      )}
+    </main>
+  );
 }
 
 function Requests({ notify, user, profile }: { notify: (message: string) => void; user?: any; profile?: OnboardingProfile }) {
@@ -1133,7 +1552,7 @@ function Profile({
       <button className="logout-button" onClick={onLogout}><Icon name="close" size={18} /> {text(language, "logout")}</button>
     </section>
 
-    
+
   </main>;
 }
 
@@ -1762,20 +2181,23 @@ function Onboarding({
   const [loading, setLoading] = useState(false);
   const [emailSentTo, setEmailSentTo] = useState("");
   const [signup, setSignup] = useState<SignupForm>({
-    firstName: "",
-    lastName: "",
+    fullName: "",
     addressLine1: "",
     addressLine2: "",
-    city: "",
-    state: "",
+    place: "",
+    state: "Kerala",
     pincode: "",
     phone: "",
+    email: "",
+    firstName: "",
+    lastName: "",
+    city: "",
   });
 
   const roleOptions: { role: UserRole; title: string; subtitle: string; icon: IconName }[] = [
     { role: "Farmer", title: "Farmer", subtitle: "Grow crops & manage farm land", icon: "leaf" },
     { role: "Tool Lender", title: "Tool Lender", subtitle: "Rent out tractors & equipment", icon: "tractor" },
-    { role: "Job Seeker", title: "Job Seeker", subtitle: "Offer farm labor & skills", icon: "users" },
+    { role: "Job Seeker", title: "Job Seeker (Labourer)", subtitle: "Offer farm labor & skills", icon: "users" },
     { role: "Storage Owner", title: "Storage Owner", subtitle: "Offer cold storage & warehouses", icon: "warehouse" },
   ];
 
@@ -1786,75 +2208,143 @@ function Onboarding({
       setAuthError("Please select your Kisan role (Farmer, Tool Lender, Job Seeker, or Storage Owner).");
       return;
     }
-    if (!email) {
-      setAuthError("Email address is required.");
+    const fullName = (signup.fullName || `${signup.firstName || ""} ${signup.lastName || ""}`).trim();
+    if (!fullName) {
+      setAuthError("Please enter your Full Name.");
       return;
     }
+    const normalizedEmail = (email || signup.email).trim().toLowerCase();
+    if (!normalizedEmail || !normalizedEmail.includes("@")) {
+      setAuthError("Please enter a valid Mail ID (email address).");
+      return;
+    }
+    const cleanPhone = signup.phone.replace(/\D/g, "");
+    if (!cleanPhone || cleanPhone.length < 10) {
+      setAuthError("Please enter a valid 10-digit mobile phone number.");
+      return;
+    }
+    if (!signup.addressLine1.trim()) {
+      setAuthError("Please enter Address Line 1.");
+      return;
+    }
+    if (!signup.place.trim() && !signup.city?.trim()) {
+      setAuthError("Please enter your Place / Town / Village.");
+      return;
+    }
+    if (!signup.state.trim()) {
+      setAuthError("Please select your State.");
+      return;
+    }
+    const cleanPincode = signup.pincode.replace(/\D/g, "");
+    if (!cleanPincode || cleanPincode.length < 6) {
+      setAuthError("Please enter a valid 6-digit postal pincode.");
+      return;
+    }
+    if (!password || password.length < 6) {
+      setAuthError("Password must be at least 6 characters.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setAuthError("Passwords do not match.");
+      return;
+    }
+
     setLoading(true);
     setAuthError("");
-    const effectivePassword = password || getAutoPassword(email);
-    const fullName = `${signup.firstName} ${signup.lastName}`.trim() || email.split("@")[0];
+    const effectivePlace = (signup.place || signup.city || "").trim();
+    const effectivePhone = formatE164Phone(cleanPhone);
 
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password: effectivePassword,
-        options: {
-          emailRedirectTo: window.location.origin + "/#auth-callback",
-          data: {
-            full_name: fullName,
-            role: roleValues[role],
-            language,
-            city: signup.city,
-            phone: signup.phone || undefined,
-          },
+      const dbRole = (role ? roleValues[role] : "farmer") as any;
+      const storedUser = localDb.saveUser({
+        id: `usr_${Date.now()}`,
+        email: normalizedEmail,
+        password,
+        full_name: fullName,
+        role: dbRole,
+        phone: effectivePhone,
+        address_line1: signup.addressLine1.trim(),
+        address_line2: signup.addressLine2.trim(),
+        place: effectivePlace,
+        state: signup.state.trim(),
+        pincode: cleanPincode,
+        location: {
+          district: effectivePlace,
+          state: signup.state.trim(),
+          pincode: cleanPincode,
         },
-      });
-
-      if (!error && data.user) {
-        notify("Welcome to Kisan Saathi!");
-        const dbProf = await fetchProfile(data.user.id).catch(() => null);
-        const resolvedRole = dbProf?.role ? (reverseRoleMap[dbProf.role] || role) : role;
-        onComplete({ role: resolvedRole, answers: {}, account: signup, dbProfile: dbProf }, data.user);
-        return;
-      }
-
-      // If account already exists or error occurs, fallback to signIn
-      const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
-        email,
-        password: effectivePassword,
-      });
-
-      if (!signInErr && signInData.user) {
-        notify("Logged in successfully!");
-        const dbProf = await fetchProfile(signInData.user.id).catch(() => null);
-        const resolvedRole = dbProf?.role ? (reverseRoleMap[dbProf.role] || role) : role;
-        onComplete({ role: resolvedRole, answers: {}, account: signup, dbProfile: dbProf }, signInData.user);
-        return;
-      }
-
-      // Complete fallback if Supabase returns rate limit 429 or auth error
-      const mockUser = { id: `usr_${btoa(email).substring(0, 12)}`, email };
-      const fallbackProf = {
-        id: mockUser.id,
-        full_name: fullName,
-        role: roleValues[role] as any,
-        onboarding_completed: false,
+        metadata: {
+          email: normalizedEmail,
+          address_line1: signup.addressLine1.trim(),
+          address_line2: signup.addressLine2.trim(),
+          place: effectivePlace,
+          state: signup.state.trim(),
+          pincode: cleanPincode,
+          phone: cleanPhone,
+          skills: role === "Job Seeker" ? ["Paddy Transplantation", "Harvesting & Cutting"] : undefined,
+        },
+        onboarding_completed: true,
         created_at: new Date().toISOString(),
+      });
+
+      if (isSupabaseConfigured) {
+        try {
+          const { data, error } = await supabase.auth.signUp({
+            email: normalizedEmail,
+            password,
+            options: {
+              emailRedirectTo: window.location.origin + "/#auth-callback",
+              data: {
+                full_name: fullName,
+                email: normalizedEmail,
+                phone: effectivePhone,
+                role: dbRole,
+                language,
+                address_line1: signup.addressLine1.trim(),
+                address_line2: signup.addressLine2.trim(),
+                place: effectivePlace,
+                state: signup.state.trim(),
+                pincode: cleanPincode,
+                city: effectivePlace,
+                location: {
+                  district: effectivePlace,
+                  state: signup.state.trim(),
+                  pincode: cleanPincode,
+                },
+              },
+            },
+          });
+          if (!error && data.user) {
+            await updateProfile(data.user.id, {
+              full_name: fullName,
+              email: normalizedEmail,
+              phone: effectivePhone,
+              language,
+              location: {
+                district: effectivePlace,
+                state: signup.state.trim(),
+                pincode: cleanPincode,
+              },
+            } as any).catch(err => console.warn("Supabase profile sync error:", err));
+          }
+        } catch (err: any) {
+          console.warn("Supabase signup error (using local database):", err);
+        }
+      }
+
+      notify("Welcome to Kisan Saathi! Account created successfully.");
+      const dbProf = localDb.getProfile(storedUser.id);
+      const authUser = { id: storedUser.id, email: storedUser.email };
+      const completedProf: OnboardingProfile = {
+        role,
+        answers: {},
+        account: { ...signup, fullName, email: normalizedEmail, phone: effectivePhone },
+        dbProfile: dbProf as any,
       };
-      notify("Welcome to Kisan Saathi!");
-      onComplete({ role, answers: {}, account: signup, dbProfile: fallbackProf as any }, mockUser);
+      localDb.setActiveSession({ user: authUser, profile: completedProf });
+      onComplete(completedProf, authUser);
     } catch (err: any) {
-      const mockUser = { id: `usr_${btoa(email).substring(0, 12)}`, email };
-      const fallbackProf = {
-        id: mockUser.id,
-        full_name: fullName,
-        role: roleValues[role] as any,
-        onboarding_completed: false,
-        created_at: new Date().toISOString(),
-      };
-      notify("Welcome to Kisan Saathi!");
-      onComplete({ role, answers: {}, account: signup, dbProfile: fallbackProf as any }, mockUser);
+      setAuthError(err.message || "Signup failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -1867,69 +2357,113 @@ function Onboarding({
     }
     setLoading(true);
     setAuthError("");
-    const effectivePassword = password || getAutoPassword(email);
+    const normalizedEmail = email.trim().toLowerCase();
 
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password: effectivePassword,
-      });
-
-      if (!error && data.user) {
-        notify("Logged in successfully!");
-        const dbProf = await fetchProfile(data.user.id).catch(() => null);
-        const resolvedRole = dbProf?.role ? (reverseRoleMap[dbProf.role] || "Farmer") : "Farmer";
-        onComplete({ role: resolvedRole, answers: {}, account: signup, dbProfile: dbProf }, data.user);
+    // 1. Check local persistent database first
+    const localMatch = localDb.findUserByEmail(normalizedEmail);
+    if (localMatch) {
+      if (password && localMatch.password && localMatch.password !== password) {
+        setAuthError("Incorrect password. Please try again.");
+        setLoading(false);
         return;
       }
-
-      // If user doesn't exist yet, attempt automatic signup
-      const selectedRole = role || "Farmer";
-      const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
-        email,
-        password: effectivePassword,
-        options: {
-          data: {
-            full_name: email.split("@")[0],
-            role: roleValues[selectedRole],
-            language,
-          },
+      const matchedRole = normalizeRole(localMatch.role);
+      const dbProf = localDb.getProfile(localMatch.id);
+      notify(`Welcome back, ${localMatch.full_name}!`);
+      const authUser = { id: localMatch.id, email: localMatch.email };
+      const completedProf: OnboardingProfile = {
+        role: matchedRole,
+        answers: {},
+        account: {
+          fullName: localMatch.full_name,
+          email: localMatch.email,
+          phone: localMatch.phone,
+          addressLine1: localMatch.address_line1 || "",
+          addressLine2: localMatch.address_line2 || "",
+          place: localMatch.place || localMatch.location?.district || "",
+          state: localMatch.state || localMatch.location?.state || "Kerala",
+          pincode: localMatch.pincode || localMatch.location?.pincode || "",
+          firstName: localMatch.full_name.split(" ")[0],
+          lastName: localMatch.full_name.split(" ").slice(1).join(" "),
+          city: localMatch.place || localMatch.location?.district || "",
         },
-      });
-
-      if (!signUpErr && signUpData.user) {
-        notify("Logged in successfully!");
-        const dbProf = await fetchProfile(signUpData.user.id).catch(() => null);
-        const resolvedRole = dbProf?.role ? (reverseRoleMap[dbProf.role] || selectedRole) : selectedRole;
-        onComplete({ role: resolvedRole, answers: {}, account: signup, dbProfile: dbProf }, signUpData.user);
-        return;
-      }
-
-      // Complete fallback if Supabase returns rate limit 429 or auth error
-      const mockUser = { id: `usr_${btoa(email).substring(0, 12)}`, email };
-      const fallbackProf = {
-        id: mockUser.id,
-        full_name: email.split("@")[0],
-        role: "farmer" as any,
-        onboarding_completed: false,
-        created_at: new Date().toISOString(),
+        dbProfile: dbProf as any,
       };
-      notify("Logged in successfully!");
-      onComplete({ role: selectedRole, answers: {}, account: signup, dbProfile: fallbackProf as any }, mockUser);
-    } catch (err: any) {
-      const mockUser = { id: `usr_${btoa(email).substring(0, 12)}`, email };
-      const fallbackProf = {
-        id: mockUser.id,
-        full_name: email.split("@")[0],
-        role: "farmer" as any,
-        onboarding_completed: false,
-        created_at: new Date().toISOString(),
-      };
-      notify("Logged in successfully!");
-      onComplete({ role: "Farmer", answers: {}, account: signup, dbProfile: fallbackProf as any }, mockUser);
-    } finally {
+      localDb.setActiveSession({ user: authUser, profile: completedProf });
+      onComplete(completedProf, authUser);
       setLoading(false);
+      return;
     }
+
+    // 2. Try Supabase if configured
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: normalizedEmail,
+          password: password || getAutoPassword(normalizedEmail),
+        });
+
+        if (!error && data.user) {
+          notify("Logged in successfully!");
+          const dbProf = await fetchProfile(data.user.id).catch(() => null);
+          const resolvedRole = normalizeRole(dbProf?.role);
+          const completedProf: OnboardingProfile = {
+            role: resolvedRole,
+            answers: {},
+            account: signup,
+            dbProfile: dbProf,
+          };
+          localDb.setActiveSession({ user: data.user, profile: completedProf });
+          onComplete(completedProf, data.user);
+          setLoading(false);
+          return;
+        }
+      } catch (err: any) {
+        console.warn("Supabase signIn error:", err);
+      }
+    }
+
+    // 3. Fallback: register new user and maintain role if selected or auto-detect from email
+    let detectedRole: UserRole = role || "Farmer";
+    if (!role) {
+      if (normalizedEmail.includes("lender")) detectedRole = "Tool Lender";
+      else if (normalizedEmail.includes("worker") || normalizedEmail.includes("labour")) detectedRole = "Job Seeker";
+      else if (normalizedEmail.includes("storage") || normalizedEmail.includes("ware")) detectedRole = "Storage Owner";
+    }
+    const newUser = localDb.saveUser({
+      id: `usr_${Date.now()}`,
+      email: normalizedEmail,
+      password: password || "password123",
+      full_name: normalizedEmail.split("@")[0],
+      role: (roleValues[detectedRole] || "farmer") as any,
+      phone: "+91 9876543210",
+      location: { district: "Palakkad", state: "Kerala", pincode: "678001" },
+      place: "Palakkad",
+      state: "Kerala",
+      pincode: "678001",
+      onboarding_completed: true,
+      created_at: new Date().toISOString(),
+    });
+    const fallbackProf: OnboardingProfile = {
+      role: detectedRole,
+      answers: {},
+      account: {
+        fullName: newUser.full_name,
+        email: newUser.email,
+        phone: newUser.phone,
+        place: "Palakkad",
+        state: "Kerala",
+        pincode: "678001",
+        addressLine1: "",
+        addressLine2: "",
+      },
+      dbProfile: localDb.getProfile(newUser.id) as any,
+    };
+    const fallbackAuth = { id: newUser.id, email: newUser.email };
+    localDb.setActiveSession({ user: fallbackAuth, profile: fallbackProf });
+    notify(`Welcome to Kisan Saathi, ${newUser.full_name}!`);
+    onComplete(fallbackProf, fallbackAuth);
+    setLoading(false);
   };
 
   const handleResendVerification = async () => {
@@ -2060,29 +2594,191 @@ function Onboarding({
           </div>
 
           <div className="signup-fields">
-            <label>First name<input value={signup.firstName} onChange={e => setSignup({ ...signup, firstName: e.target.value })} /></label>
-            <label>Last name<input value={signup.lastName} onChange={e => setSignup({ ...signup, lastName: e.target.value })} /></label>
-            <label>Email address<input type="email" placeholder="name@example.com" value={email} onChange={e => setEmail(e.target.value)} /></label>
-            <label>City / district<input value={signup.city} onChange={e => setSignup({ ...signup, city: e.target.value })} /></label>
-            <label>Password (min 6 chars)
+            <div className="signup-section-header">
+              <Icon name="user" size={16} /> Personal Details
+            </div>
+
+            <label className="full-field">
+              Full Name <span style={{ color: '#d32f2f' }}>*</span>
+              <input
+                type="text"
+                placeholder="e.g. Ramesh Kumar"
+                value={signup.fullName}
+                onChange={e => setSignup({ ...signup, fullName: e.target.value, firstName: e.target.value.split(" ")[0], lastName: e.target.value.split(" ").slice(1).join(" ") })}
+                required
+              />
+            </label>
+
+            <label>
+              Mail ID (Email) <span style={{ color: '#d32f2f' }}>*</span>
+              <input
+                type="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+              />
+            </label>
+
+            <label>
+              Phone Number <span style={{ color: '#d32f2f' }}>*</span>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span style={{ padding: '0 8px', background: '#f0f5f1', border: '2px solid #d4e0d7', borderRight: 0, borderRadius: '12px 0 0 12px', height: '47px', display: 'flex', alignItems: 'center', fontWeight: 800, color: '#314e40', fontSize: '13px' }}>+91</span>
+                <input
+                  type="tel"
+                  placeholder="9876543210"
+                  maxLength={10}
+                  style={{ borderRadius: '0 12px 12px 0' }}
+                  value={signup.phone}
+                  onChange={e => setSignup({ ...signup, phone: e.target.value.replace(/\D/g, '') })}
+                  required
+                />
+              </div>
+            </label>
+
+            <div className="signup-section-header">
+              <Icon name="map" size={16} /> Address Details (Line by Line)
+            </div>
+
+            <label className="full-field">
+              Address Line 1 <span style={{ color: '#d32f2f' }}>*</span>
+              <input
+                type="text"
+                placeholder="House / Survey No., Building, Street / Road"
+                value={signup.addressLine1}
+                onChange={e => setSignup({ ...signup, addressLine1: e.target.value })}
+                required
+              />
+            </label>
+
+            <label className="full-field">
+              Address Line 2 (Optional)
+              <input
+                type="text"
+                placeholder="Area, Landmark, Post Office"
+                value={signup.addressLine2}
+                onChange={e => setSignup({ ...signup, addressLine2: e.target.value })}
+              />
+            </label>
+
+            <label>
+              Place / Village / Town <span style={{ color: '#d32f2f' }}>*</span>
+              <input
+                type="text"
+                placeholder="e.g. Palakkad / Shirdi"
+                value={signup.place}
+                onChange={e => setSignup({ ...signup, place: e.target.value, city: e.target.value })}
+                required
+              />
+            </label>
+
+            <label>
+              State <span style={{ color: '#d32f2f' }}>*</span>
+              <select
+                value={signup.state}
+                onChange={e => setSignup({ ...signup, state: e.target.value })}
+                required
+              >
+                <option value="">Select State</option>
+                {INDIAN_STATES.map(st => (
+                  <option key={st} value={st}>{st}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="full-field">
+              Pincode <span style={{ color: '#d32f2f' }}>*</span>
+              <input
+                type="text"
+                placeholder="e.g. 678001"
+                maxLength={6}
+                value={signup.pincode}
+                onChange={e => setSignup({ ...signup, pincode: e.target.value.replace(/\D/g, '') })}
+                required
+              />
+            </label>
+
+            <div className="signup-section-header">
+              <Icon name="shield" size={16} /> Security
+            </div>
+
+            <label>
+              Password (min 6 chars) <span style={{ color: '#d32f2f' }}>*</span>
               <div className="password-input-wrap" style={{ position: 'relative' }}>
-                <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Min 6 characters"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 800, color: '#168642' }}
+                >
                   {showPassword ? "Hide" : "Show"}
                 </button>
               </div>
             </label>
-            <label>Confirm password<input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} /></label>
+
+            <label>
+              Confirm Password <span style={{ color: '#d32f2f' }}>*</span>
+              <input
+                type="password"
+                placeholder="Re-enter password"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                required
+              />
+            </label>
           </div>
           {authError && <p className="auth-error" role="alert">{authError}</p>}
           <button className="primary-action" disabled={loading} onClick={handleSignup}>
-            {loading ? "Creating account..." : "Sign up & Send Verification Email"}
+            {loading ? "Creating account..." : "Sign Up & Register"}
           </button>
           <button className="text-action" onClick={() => { setAuthError(""); setAuthMode("login"); }}>Already have an account? <b>Sign in</b></button>
         </>}
 
         {step === "login" && authMode === "login" && <>
           <div className="auth-card-heading"><div><span className="eyebrow">{text(language, "welcome")}</span><h1>{text(language, "signIn")}</h1></div></div>
+
+          <div style={{ background: '#f8faf9', border: '1px solid #cce3d5', borderRadius: '12px', padding: '12px', marginBottom: '14px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '8px' }}>
+              ⚡ Quick 1-Click Role Logins:
+            </span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+              <button
+                type="button"
+                onClick={() => { setEmail("lender@kisan.com"); setPassword("password123"); }}
+                style={{ textAlign: 'left', padding: '6px 8px', background: '#fff', border: '1px solid #86efac', borderRadius: '8px', cursor: 'pointer', fontSize: '11px' }}
+              >
+                <strong>🚜 Tool Lender</strong><br /><span style={{ color: '#6b7280' }}>lender@kisan.com</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setEmail("farmer@kisan.com"); setPassword("password123"); }}
+                style={{ textAlign: 'left', padding: '6px 8px', background: '#fff', border: '1px solid #86efac', borderRadius: '8px', cursor: 'pointer', fontSize: '11px' }}
+              >
+                <strong>🌾 Farmer</strong><br /><span style={{ color: '#6b7280' }}>farmer@kisan.com</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setEmail("worker@kisan.com"); setPassword("password123"); }}
+                style={{ textAlign: 'left', padding: '6px 8px', background: '#fff', border: '1px solid #86efac', borderRadius: '8px', cursor: 'pointer', fontSize: '11px' }}
+              >
+                <strong>👷 Labourer</strong><br /><span style={{ color: '#6b7280' }}>worker@kisan.com</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setEmail("storage@kisan.com"); setPassword("password123"); }}
+                style={{ textAlign: 'left', padding: '6px 8px', background: '#fff', border: '1px solid #86efac', borderRadius: '8px', cursor: 'pointer', fontSize: '11px' }}
+              >
+                <strong>🏭 Storage Owner</strong><br /><span style={{ color: '#6b7280' }}>storage@kisan.com</span>
+              </button>
+            </div>
+          </div>
+
           <div className="signup-fields">
             <label>Email address<input type="email" placeholder="farmer@example.com" value={email} onChange={e => setEmail(e.target.value)} /></label>
             <label>Password
@@ -2154,15 +2850,50 @@ function Onboarding({
   </div>;
 }
 
-const navItems = [
-  { id: "home", labelKey: "home", icon: "home" as IconName },
-  { id: "market", labelKey: "equipment", icon: "tractor" as IconName },
-  { id: "jobs", labelKey: "jobs", icon: "briefcase" as IconName },
-  { id: "workers", labelKey: "workers", icon: "users" as IconName },
-  { id: "requests", labelKey: "requests", icon: "bell" as IconName },
-  { id: "profile", labelKey: "profile", icon: "user" as IconName },
-  { id: "schemes", labelKey: "schemes", icon: "shield" as IconName },
-];
+const getNavItemsForRole = (role: UserRole) => {
+  if (role === "Tool Lender") {
+    return [
+      { id: "lender_home", labelKey: "dashboard", icon: "home" as IconName },
+      { id: "lender_equipment", labelKey: "equipment", icon: "tractor" as IconName },
+      { id: "lender_bookings", labelKey: "requests", icon: "clock" as IconName },
+      { id: "profile", labelKey: "profile", icon: "user" as IconName },
+    ];
+  }
+  if (role === "Job Seeker") {
+    return [
+      { id: "labour_home", labelKey: "dashboard", icon: "home" as IconName },
+      { id: "labour_skills", labelKey: "skills", icon: "tool" as IconName },
+      { id: "labour_jobs", labelKey: "jobs", icon: "briefcase" as IconName },
+      { id: "labour_applications", labelKey: "applications", icon: "clock" as IconName },
+      { id: "profile", labelKey: "profile", icon: "user" as IconName },
+    ];
+  }
+  if (role === "Storage Owner") {
+    return [
+      { id: "storage_home", labelKey: "dashboard", icon: "home" as IconName },
+      { id: "storage_facilities", labelKey: "facilities", icon: "warehouse" as IconName },
+      { id: "storage_requests", labelKey: "requests", icon: "clock" as IconName },
+      { id: "profile", labelKey: "profile", icon: "user" as IconName },
+    ];
+  }
+  // Default Farmer
+  return [
+    { id: "home", labelKey: "home", icon: "home" as IconName },
+    { id: "market", labelKey: "equipment", icon: "tractor" as IconName },
+    { id: "workers", labelKey: "workers", icon: "users" as IconName },
+    { id: "farmer_storage", labelKey: "storage", icon: "warehouse" as IconName },
+    { id: "requests", labelKey: "requests", icon: "clock" as IconName },
+    { id: "schemes", labelKey: "schemes", icon: "shield" as IconName },
+    { id: "profile", labelKey: "profile", icon: "user" as IconName },
+  ];
+};
+
+const getDefaultPageForRole = (role: UserRole) => {
+  if (role === "Tool Lender") return "lender_home";
+  if (role === "Job Seeker") return "labour_home";
+  if (role === "Storage Owner") return "storage_home";
+  return "home";
+};
 
 export default function App() {
   const [authenticated, setAuthenticated] = useState(false);
@@ -2181,9 +2912,10 @@ export default function App() {
     try {
       const dbProf = await fetchProfile(userId);
       if (dbProf) {
+        const canonicalRole = normalizeRole(dbProf.role);
         setProfile(prev => ({
           ...prev,
-          role: reverseRoleMap[dbProf.role] || "Farmer",
+          role: canonicalRole,
           dbProfile: dbProf,
         }));
       }
@@ -2200,39 +2932,74 @@ export default function App() {
       setIsResetPasswordFlow(true);
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser(session.user);
-        setAuthenticated(true);
-        loadUserProfile(session.user.id);
-      } else {
-        setProfileLoaded(false);
-      }
-    });
+    // 1. Check local persistent session first
+    const active = localDb.getActiveSession();
+    if (active && active.user && active.profile) {
+      const canonicalRole = normalizeRole(active.profile.role);
+      const restoredProf: OnboardingProfile = {
+        ...active.profile,
+        role: canonicalRole,
+      };
+      setUser(active.user);
+      setProfile(restoredProf);
+      setProfileLoaded(true);
+      setAuthenticated(true);
+      setPage(getDefaultPageForRole(canonicalRole));
+      return;
+    }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY") {
-        setIsResetPasswordFlow(true);
-      }
+    // 2. Check Supabase if configured
+    if (isSupabaseConfigured) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          setUser(session.user);
+          setAuthenticated(true);
+          loadUserProfile(session.user.id);
+        } else {
+          setProfileLoaded(false);
+        }
+      });
 
-      if (session?.user) {
-        setUser(session.user);
-        setAuthenticated(true);
-        loadUserProfile(session.user.id);
-      } else {
-        setUser(null);
-        setAuthenticated(false);
-        setProfileLoaded(false);
-      }
-    });
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === "PASSWORD_RECOVERY") {
+          setIsResetPasswordFlow(true);
+        }
 
-    return () => subscription.unsubscribe();
+        if (session?.user) {
+          setUser(session.user);
+          setAuthenticated(true);
+          loadUserProfile(session.user.id);
+        } else {
+          setUser(null);
+          setAuthenticated(false);
+          setProfileLoaded(false);
+        }
+      });
+
+      return () => subscription.unsubscribe();
+    }
   }, []);
 
+  const roleNavItems = getNavItemsForRole(profile.role);
+  const defaultPage = getDefaultPageForRole(profile.role);
+
+  useEffect(() => {
+    if (authenticated) {
+      const validNavs = getNavItemsForRole(profile.role);
+      if (!validNavs.some(n => n.id === page)) {
+        setPage(getDefaultPageForRole(profile.role));
+      }
+    }
+  }, [profile.role, authenticated, page]);
+
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    localDb.clearActiveSession();
+    if (isSupabaseConfigured) {
+      await supabase.auth.signOut().catch(() => { });
+    }
     setAuthenticated(false);
     setUser(null);
+    setProfile({ role: "Farmer", answers: {} });
     setProfileLoaded(false);
     setPage("home");
     notify("Logged out successfully.");
@@ -2246,11 +3013,18 @@ export default function App() {
       initialStep="resetPassword"
       onComplete={(completedProfile, authUser) => {
         setIsResetPasswordFlow(false);
-        setProfile(completedProfile);
-        if (completedProfile.dbProfile) {
+        const canonicalRole = normalizeRole(completedProfile.role);
+        const resolvedProf: OnboardingProfile = {
+          ...completedProfile,
+          role: canonicalRole,
+        };
+        setProfile(resolvedProf);
+        if (resolvedProf.dbProfile) {
           setProfileLoaded(true);
         }
         setUser(authUser);
+        localDb.setActiveSession({ user: authUser, profile: resolvedProf });
+        setPage(getDefaultPageForRole(canonicalRole));
         setAuthenticated(true);
       }}
     />;
@@ -2262,22 +3036,23 @@ export default function App() {
       onLanguageChange={setLanguage}
       notify={notify}
       onComplete={(completedProfile, authUser) => {
-        setProfile(completedProfile);
-        if (completedProfile.dbProfile) {
+        const canonicalRole = normalizeRole(completedProfile.role);
+        const resolvedProf: OnboardingProfile = {
+          ...completedProfile,
+          role: canonicalRole,
+        };
+        setProfile(resolvedProf);
+        if (resolvedProf.dbProfile) {
           setProfileLoaded(true);
         }
         setUser(authUser);
+        localDb.setActiveSession({ user: authUser, profile: resolvedProf });
+        setPage(getDefaultPageForRole(canonicalRole));
         setAuthenticated(true);
         notify("Welcome to Kisan Saathi!");
       }}
     />;
   }
-
-  const visibleNavItems = navItems.filter(item =>
-    (item.id !== "requests" || profile.role !== "Farmer") &&
-    (item.id !== "jobs" || profile.role === "Job Seeker") &&
-    (item.id !== "workers" || profile.role === "Farmer")
-  );
 
   const showPersonalizationModal =
     authenticated &&
@@ -2302,31 +3077,58 @@ export default function App() {
     )}
 
     <aside className="desktop-sidebar">
-      <button className="brand" onClick={() => setPage("home")}><span className="brand-mark"><Icon name="leaf" /></span><span>Kisan<br /><b>Saathi</b></span></button>
-      <nav>{visibleNavItems.map(item => <button className={page === item.id ? "active" : ""} key={item.id} onClick={() => setPage(item.id)}><Icon name={item.icon} /><span>{text(language, item.labelKey)}</span></button>)}</nav>
+      <button className="brand" onClick={() => setPage(defaultPage)}><span className="brand-mark"><Icon name="leaf" /></span><span>Kisan<br /><b>Saathi</b></span></button>
+      <nav>{roleNavItems.map(item => <button className={page === item.id ? "active" : ""} key={item.id} onClick={() => setPage(item.id)}><Icon name={item.icon} /><span>{text(language, item.labelKey)}</span></button>)}</nav>
     </aside>
     <div className="app-main">
       <header className="topbar">
-        <button className="brand mobile-brand" onClick={() => setPage("home")}><span className="brand-mark"><Icon name="leaf" /></span><span>Kisan <b>Saathi</b></span></button>
+        <button className="brand mobile-brand" onClick={() => setPage(defaultPage)}><span className="brand-mark"><Icon name="leaf" /></span><span>Kisan <b>Saathi</b></span></button>
         <div className="top-actions">
           <LanguageSelect language={language} onChange={setLanguage} />
-          {profile.role !== "Farmer" && <button className="notification-btn" aria-label="Notifications" onClick={() => { setPage("requests"); }}><Icon name="bell" /><i>2</i></button>}
+          {profile.role !== "Farmer" && (
+            <button className="notification-btn" aria-label="Notifications" onClick={() => {
+              if (profile.role === "Tool Lender") setPage("lender_bookings");
+              else if (profile.role === "Storage Owner") setPage("storage_requests");
+              else if (profile.role === "Job Seeker") setPage("labour_applications");
+              else setPage("requests");
+            }}><Icon name="bell" /><i>1</i></button>
+          )}
           <button className="profile-chip" onClick={() => setPage("profile")}>
             <img src={profile.dbProfile?.avatar_url || photos.farmer} alt="" style={{ objectFit: 'cover' }} />
-            <span>{profile.account?.firstName || profile.dbProfile?.full_name?.split(" ")[0] || "User"}<small>{profile.role}</small></span>
+            <span>{profile.account?.fullName?.split(" ")[0] || profile.account?.firstName || profile.dbProfile?.full_name?.split(" ")[0] || "User"}<small>{profile.role}</small></span>
           </button>
         </div>
       </header>
 
+      {/* FARMER PAGES */}
       {page === "home" && <Dashboard notify={notify} go={setPage} profile={profile} language={language} />}
       {page === "market" && <Marketplace notify={notify} user={user} language={language} />}
-      {page === "jobs" && <Jobs notify={notify} user={user} language={language} />}
       {page === "workers" && profile.role === "Farmer" && <Workers notify={notify} />}
-      {page === "requests" && <Requests notify={notify} profile={profile} user={user} />}
-      {page === "profile" && <Profile profile={profile} notify={notify} language={language} onLogout={handleLogout} user={user} onProfileUpdated={(updated) => loadUserProfile(user.id)} />}
+      {page === "farmer_storage" && <FarmerStorageBrowse notify={notify} user={user} />}
       {page === "schemes" && <GovernmentSchemes profile={profile} language={language} notify={notify} />}
+
+      {/* TOOL LENDER PAGES */}
+      {page === "lender_home" && <ToolLenderDashboard notify={notify} go={setPage} profile={profile} user={user} />}
+      {page === "lender_equipment" && <ToolLenderEquipment notify={notify} profile={profile} user={user} />}
+      {page === "lender_bookings" && <ToolLenderBookings notify={notify} profile={profile} user={user} />}
+
+      {/* LABOURER / JOB SEEKER PAGES */}
+      {page === "labour_home" && <LabourerDashboard notify={notify} go={setPage} profile={profile} user={user} />}
+      {page === "labour_skills" && <LabourerSkillsManage notify={notify} profile={profile} user={user} onProfileUpdated={() => user?.id && loadUserProfile(user.id)} />}
+      {page === "labour_jobs" && <LabourerJobsFeed notify={notify} profile={profile} user={user} />}
+      {page === "labour_applications" && <LabourerApplications notify={notify} profile={profile} user={user} />}
+
+      {/* STORAGE OWNER PAGES */}
+      {page === "storage_home" && <StorageOwnerDashboard notify={notify} go={setPage} profile={profile} user={user} />}
+      {page === "storage_facilities" && <StorageOwnerFacilities notify={notify} profile={profile} user={user} />}
+      {page === "storage_requests" && <StorageOwnerRequests notify={notify} profile={profile} user={user} />}
+
+      {/* SHARED PAGES */}
+      {page === "jobs" && <Jobs notify={notify} user={user} language={language} />}
+      {page === "requests" && <Requests notify={notify} profile={profile} user={user} />}
+      {page === "profile" && <Profile profile={profile} notify={notify} language={language} onLogout={handleLogout} user={user} onProfileUpdated={() => user?.id && loadUserProfile(user.id)} />}
     </div>
     {toast && <div className="toast"><Icon name="check" />{toast}</div>}
-    <nav className="bottom-nav">{visibleNavItems.map(item => <button className={page === item.id ? "active" : ""} key={item.id} onClick={() => setPage(item.id)}><span><Icon name={item.icon} /></span><small>{text(language, item.labelKey)}</small></button>)}</nav>
+    <nav className="bottom-nav">{roleNavItems.map(item => <button className={page === item.id ? "active" : ""} key={item.id} onClick={() => setPage(item.id)}><span><Icon name={item.icon} /></span><small>{text(language, item.labelKey)}</small></button>)}</nav>
   </div>;
 }

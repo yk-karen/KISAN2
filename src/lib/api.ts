@@ -1,4 +1,5 @@
-import { supabase } from './supabase';
+import { supabase, isSupabaseConfigured } from './supabase';
+import { localDb } from './localDatabase';
 import type { Database } from '../types/database.generated';
 import type {
   EquipmentListing,
@@ -12,35 +13,48 @@ import type {
   GovernmentScheme,
 } from '../types/database';
 
-export const SAFE_PROFILE_COLUMNS = 'id, full_name, role, location, avatar_url';
+export const SAFE_PROFILE_COLUMNS = 'id, full_name, email, role, location, avatar_url';
 
 // ============================================================
 // 1. PROFILES API
 // ============================================================
 export async function fetchProfile(userId: string) {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single();
-
-  if (error) throw error;
-  return data;
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      if (!error && data) return data;
+    } catch (e) {
+      console.warn('Supabase fetchProfile failed, checking localDb:', e);
+    }
+  }
+  return localDb.getProfile(userId);
 }
 
 export async function updateProfile(
   userId: string,
   updates: Database['public']['Tables']['profiles']['Update']
 ) {
-  const { data, error } = await supabase
-    .from('profiles')
-    .update(updates)
-    .eq('id', userId)
-    .select()
-    .single();
+  // Always update local database for instantaneous cross-role visibility
+  localDb.updateProfile(userId, updates as any);
 
-  if (error) throw error;
-  return data;
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', userId)
+        .select()
+        .single();
+      if (!error && data) return data;
+    } catch (e) {
+      console.warn('Supabase updateProfile failed, saved locally:', e);
+    }
+  }
+  return localDb.getProfile(userId);
 }
 
 export async function updatePersonalizationProfile(
@@ -78,167 +92,378 @@ export async function updatePersonalizationProfile(
 // 2. EQUIPMENT MARKETPLACE API
 // ============================================================
 export async function fetchEquipmentListings(category?: string) {
-  let query = supabase
-    .from('equipment_listings')
-    .select(`*, owner:profiles!owner_id(${SAFE_PROFILE_COLUMNS})`)
-    .eq('is_available', true)
-    .order('created_at', { ascending: false });
+  if (isSupabaseConfigured) {
+    try {
+      let query = supabase
+        .from('equipment_listings')
+        .select(`*, owner:profiles!owner_id(${SAFE_PROFILE_COLUMNS})`)
+        .eq('is_available', true)
+        .order('created_at', { ascending: false });
 
-  if (category && category !== 'All tools') {
-    query = query.ilike('category', `%${category}%`);
+      if (category && category !== 'All tools') {
+        query = query.ilike('category', `%${category}%`);
+      }
+
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        return data as unknown as (EquipmentListing & { owner: Partial<Database['public']['Tables']['profiles']['Row']> })[];
+      }
+    } catch (e) {
+      console.warn('Supabase fetchEquipmentListings error, falling back to localDb:', e);
+    }
   }
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return data as unknown as (EquipmentListing & { owner: Partial<Database['public']['Tables']['profiles']['Row']> })[];
+  return localDb.getEquipmentListings(category) as any;
 }
 
 export async function createEquipmentListing(
   listing: Database['public']['Tables']['equipment_listings']['Insert']
 ) {
-  const { data, error } = await supabase
-    .from('equipment_listings')
-    .insert(listing)
-    .select()
-    .single();
+  // Always persist immediately to localDb for instant cross-dashboard access
+  const localItem = localDb.addEquipmentListing(listing as any);
 
-  if (error) throw error;
-  return data;
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('equipment_listings')
+        .insert(listing)
+        .select()
+        .single();
+      if (!error && data) return data;
+    } catch (e) {
+      console.warn('Supabase createEquipmentListing error, persisted locally:', e);
+    }
+  }
+  return localItem as any;
+}
+
+export async function fetchOwnerEquipmentListings(ownerId: string) {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('equipment_listings')
+        .select('*')
+        .eq('owner_id', ownerId)
+        .order('created_at', { ascending: false });
+      if (!error && data && data.length > 0) {
+        return data as unknown as EquipmentListing[];
+      }
+    } catch (e) {
+      console.warn('Supabase fetchOwnerEquipmentListings error, using localDb:', e);
+    }
+  }
+  return localDb.getOwnerEquipmentListings(ownerId) as any;
+}
+
+export async function updateEquipmentListing(
+  id: string,
+  updates: Partial<Database['public']['Tables']['equipment_listings']['Update']>
+) {
+  localDb.updateEquipmentListing(id, updates as any);
+
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('equipment_listings')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      if (!error && data) return data as unknown as EquipmentListing;
+    } catch (e) {
+      console.warn('Supabase updateEquipmentListing error, updated locally:', e);
+    }
+  }
+  return (localDb.getEquipmentListings().find(e => e.id === id) || updates) as any;
+}
+
+export async function deleteEquipmentListing(id: string) {
+  localDb.deleteEquipmentListing(id);
+
+  if (isSupabaseConfigured) {
+    try {
+      await supabase.from('equipment_listings').delete().eq('id', id);
+    } catch (e) {
+      console.warn('Supabase deleteEquipmentListing error, deleted locally:', e);
+    }
+  }
+  return true;
 }
 
 // ============================================================
 // 3. STORAGE LISTINGS API
 // ============================================================
 export async function fetchStorageListings(type?: string) {
-  let query = supabase
-    .from('storage_listings')
-    .select(`*, owner:profiles!owner_id(${SAFE_PROFILE_COLUMNS})`)
-    .gt('available_capacity_tons', 0)
-    .order('created_at', { ascending: false });
+  if (isSupabaseConfigured) {
+    try {
+      let query = supabase
+        .from('storage_listings')
+        .select(`*, owner:profiles!owner_id(${SAFE_PROFILE_COLUMNS})`)
+        .gt('available_capacity_tons', 0)
+        .order('created_at', { ascending: false });
 
-  if (type && type !== 'All storage') {
-    query = query.eq('storage_type', type as any);
+      if (type && type !== 'All storage') {
+        query = query.eq('storage_type', type as any);
+      }
+
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        return data as unknown as (StorageListing & { owner: Partial<Database['public']['Tables']['profiles']['Row']> })[];
+      }
+    } catch (e) {
+      console.warn('Supabase fetchStorageListings error, falling back to localDb:', e);
+    }
   }
+  return localDb.getStorageListings(type) as any;
+}
 
-  const { data, error } = await query;
-  if (error) throw error;
-  return data as unknown as (StorageListing & { owner: Partial<Database['public']['Tables']['profiles']['Row']> })[];
+export async function fetchOwnerStorageListings(ownerId: string) {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('storage_listings')
+        .select('*')
+        .eq('owner_id', ownerId)
+        .order('created_at', { ascending: false });
+      if (!error && data && data.length > 0) {
+        return data as unknown as StorageListing[];
+      }
+    } catch (e) {
+      console.warn('Supabase fetchOwnerStorageListings error, using localDb:', e);
+    }
+  }
+  return localDb.getOwnerStorageListings(ownerId) as any;
 }
 
 export async function createStorageListing(
   listing: Database['public']['Tables']['storage_listings']['Insert']
 ) {
-  const { data, error } = await supabase
-    .from('storage_listings')
-    .insert(listing)
-    .select()
-    .single();
+  const localItem = localDb.addStorageListing(listing as any);
 
-  if (error) throw error;
-  return data;
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('storage_listings')
+        .insert(listing)
+        .select()
+        .single();
+      if (!error && data) return data;
+    } catch (e) {
+      console.warn('Supabase createStorageListing error, persisted locally:', e);
+    }
+  }
+  return localItem as any;
+}
+
+export async function updateStorageListing(
+  id: string,
+  updates: Partial<Database['public']['Tables']['storage_listings']['Update']>
+) {
+  localDb.updateStorageListing(id, updates as any);
+
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('storage_listings')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      if (!error && data) return data as unknown as StorageListing;
+    } catch (e) {
+      console.warn('Supabase updateStorageListing error, updated locally:', e);
+    }
+  }
+  return (localDb.getStorageListings().find(s => s.id === id) || updates) as any;
+}
+
+export async function deleteStorageListing(id: string) {
+  localDb.deleteStorageListing(id);
+
+  if (isSupabaseConfigured) {
+    try {
+      await supabase.from('storage_listings').delete().eq('id', id);
+    } catch (e) {
+      console.warn('Supabase deleteStorageListing error, deleted locally:', e);
+    }
+  }
+  return true;
 }
 
 // ============================================================
-// 4. JOB POSTINGS & APPLICATIONS API
+// 4. WORKERS (JOB SEEKERS) API
+// ============================================================
+export async function fetchWorkers() {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'job_seeker')
+        .order('created_at', { ascending: false });
+      if (!error && data && data.length > 0) return data;
+    } catch (e) {
+      console.warn('Supabase fetchWorkers error, using localDb:', e);
+    }
+  }
+  return localDb.getWorkers();
+}
+
+// ============================================================
+// 5. JOB POSTINGS & APPLICATIONS API
 // ============================================================
 export async function fetchJobPostings(status: string = 'open') {
-  const { data, error } = await supabase
-    .from('job_postings')
-    .select(`*, farmer:profiles!farmer_id(${SAFE_PROFILE_COLUMNS})`)
-    .eq('status', status)
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return data as unknown as (JobPosting & { farmer: Partial<Database['public']['Tables']['profiles']['Row']> })[];
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('job_postings')
+        .select(`*, farmer:profiles!farmer_id(${SAFE_PROFILE_COLUMNS})`)
+        .eq('status', status)
+        .order('created_at', { ascending: false });
+      if (!error && data) return data as any;
+    } catch (e) {
+      console.warn('Supabase fetchJobPostings error:', e);
+    }
+  }
+  return [];
 }
 
 export async function createJobPosting(
   posting: Database['public']['Tables']['job_postings']['Insert']
 ) {
-  const { data, error } = await supabase
-    .from('job_postings')
-    .insert(posting)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('job_postings')
+        .insert(posting)
+        .select()
+        .single();
+      if (!error && data) return data;
+    } catch (e) {
+      console.warn('Supabase createJobPosting error:', e);
+    }
+  }
+  return { id: `job_${Date.now()}`, ...posting };
 }
 
 export async function applyForJob(jobId: string, workerId: string, notes?: string) {
-  const { data, error } = await supabase
-    .from('job_applications')
-    .insert({
-      job_id: jobId,
-      worker_id: workerId,
-      notes: notes || null,
-      status: 'pending',
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('job_applications')
+        .insert({
+          job_id: jobId,
+          worker_id: workerId,
+          notes: notes || null,
+          status: 'pending',
+        })
+        .select()
+        .single();
+      if (!error && data) return data;
+    } catch (e) {
+      console.warn('Supabase applyForJob error:', e);
+    }
+  }
+  return { id: `app_${Date.now()}`, job_id: jobId, worker_id: workerId, notes, status: 'pending' };
 }
 
 export async function updateJobApplicationStatus(
   applicationId: string,
   status: 'accepted' | 'rejected' | 'withdrawn'
 ) {
-  const { data, error } = await supabase
-    .from('job_applications')
-    .update({ status })
-    .eq('id', applicationId)
-    .select()
-    .single();
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('job_applications')
+        .update({ status })
+        .eq('id', applicationId)
+        .select()
+        .single();
+      if (!error && data) return data;
+    } catch (e) {
+      console.warn('Supabase updateJobApplicationStatus error:', e);
+    }
+  }
+  return { id: applicationId, status };
+}
 
-  if (error) throw error;
-  return data;
+export async function fetchWorkerApplications(workerId: string) {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('job_applications')
+        .select(`*, job:job_postings(*, farmer:profiles!farmer_id(${SAFE_PROFILE_COLUMNS}))`)
+        .eq('worker_id', workerId)
+        .order('created_at', { ascending: false });
+      if (!error && data) return data;
+    } catch (e) {
+      console.warn('Supabase fetchWorkerApplications error:', e);
+    }
+  }
+  return [];
 }
 
 // ============================================================
-// 5. SERVICE REQUESTS & BOOKINGS API
+// 6. SERVICE REQUESTS & BOOKINGS API
 // ============================================================
 export async function createServiceRequest(
   request: Database['public']['Tables']['service_requests']['Insert']
 ) {
-  const { data, error } = await supabase
-    .from('service_requests')
-    .insert({
-      ...request,
-      status: request.status || 'pending',
-    })
-    .select()
-    .single();
+  const localReq = localDb.addServiceRequest(request as any);
 
-  if (error) throw error;
-  return data;
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('service_requests')
+        .insert({
+          ...request,
+          status: request.status || 'pending',
+        })
+        .select()
+        .single();
+      if (!error && data) return data;
+    } catch (e) {
+      console.warn('Supabase createServiceRequest error, persisted locally:', e);
+    }
+  }
+  return localReq as any;
 }
 
 export async function updateServiceRequestStatus(
   requestId: string,
   status: 'confirmed' | 'completed' | 'cancelled'
 ) {
-  const { data, error } = await supabase
-    .from('service_requests')
-    .update({ status })
-    .eq('id', requestId)
-    .select()
-    .single();
+  localDb.updateServiceRequestStatus(requestId, status);
 
-  if (error) throw error;
-  return data;
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('service_requests')
+        .update({ status })
+        .eq('id', requestId)
+        .select()
+        .single();
+      if (!error && data) return data;
+    } catch (e) {
+      console.warn('Supabase updateServiceRequestStatus error, updated locally:', e);
+    }
+  }
+  return localDb.getServiceRequests().find(r => r.id === requestId) as any;
 }
 
 export async function fetchUserRequests(userId: string) {
-  const { data, error } = await supabase
-    .from('service_requests')
-    .select(`*, requester:profiles!requester_id(${SAFE_PROFILE_COLUMNS}), provider:profiles!provider_id(${SAFE_PROFILE_COLUMNS})`)
-    .or(`requester_id.eq.${userId},provider_id.eq.${userId}`)
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return data;
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('service_requests')
+        .select(`*, requester:profiles!requester_id(${SAFE_PROFILE_COLUMNS}), provider:profiles!provider_id(${SAFE_PROFILE_COLUMNS})`)
+        .or(`requester_id.eq.${userId},provider_id.eq.${userId}`)
+        .order('created_at', { ascending: false });
+      if (!error && data && data.length > 0) return data;
+    } catch (e) {
+      console.warn('Supabase fetchUserRequests error, using localDb:', e);
+    }
+  }
+  return localDb.getUserRequests(userId) as any;
 }
 
 // ============================================================
