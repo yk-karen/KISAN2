@@ -26,6 +26,7 @@ import { SpeakButton as RealSpeakButton } from "../../src/components/SpeakButton
 import { matchSchemeForProfile } from "../../src/lib/schemeMatching";
 import { SchemeMatchInfo } from "../../src/components/SchemeMatchInfo";
 import { OfficialApplyButton } from "../../src/components/OfficialApplyButton";
+import { SchemeEligibilityQuiz } from "../../src/components/SchemeEligibilityQuiz";
 
 type WeatherState = { temperature: number; description: string; location: string; advice: string } | null;
 
@@ -117,15 +118,15 @@ const languageOptions: { code: LanguageCode; label: string; nativeLabel: string 
 ];
 
 const translations: Record<LanguageCode, Record<string, string>> = {
-  en: { welcome: "WELCOME", signIn: "Sign in to continue", chooseUse: "Choose how you use Kisan Saathi, then enter your mobile number.", mobile: "Mobile number", sendOtp: "Send one-time password", secure: "Your number stays private and secure.", whatNeed: "What do you need?", schemes: "Government schemes", schemesHint: "Suggestions matched to your crops, land, and needs.", apply: "Can I apply?", home: "Home", equipment: "Equipment", jobs: "Jobs", requests: "Requests", profile: "Profile", logout: "Log out", selectLanguage: "Select language", onboarding: "Set up your profile", skip: "Skip for now", continue: "Continue", finish: "Finish setup", back: "Back" },
-  hi: { welcome: "स्वागत है", signIn: "जारी रखने के लिए साइन इन करें", chooseUse: "किसान साथी का उपयोग कैसे करेंगे? अपना मोबाइल नंबर दर्ज करें।", mobile: "मोबाइल नंबर", sendOtp: "वन-टाइम पासवर्ड भेजें", secure: "आपका नंबर सुरक्षित और निजी रहेगा।", whatNeed: "आपको क्या चाहिए?", schemes: "सरकारी योजनाएं", schemesHint: "आपकी फसल, जमीन और जरूरतों के आधार पर सुझाव।", apply: "क्या मैं आवेदन कर सकता हूं?", home: "होम", equipment: "उपकरण", jobs: "काम", requests: "अनुरोध", profile: "प्रोफाइल", logout: "लॉग आउट", selectLanguage: "भाषा चुनें", onboarding: "अपनी प्रोफाइल बनाएं", skip: "अभी छोड़ें", continue: "जारी रखें", finish: "सेटअप पूरा करें" },
+  en: {  welcome: "WELCOME", signIn: "Sign in to continue", chooseUse: "Choose how you use Kisan Saathi, then enter your mobile number.", mobile: "Mobile number", sendOtp: "Send one-time password", secure: "Your number stays private and secure.", whatNeed: "What do you need?", schemes: "Government schemes", schemesHint: "Suggestions matched to your crops, land, and needs.", apply: "Can I apply?", canIApply: "Can I apply for this?", weatherTitle: "Live Weather & Advice", equipmentMarketplace: "Equipment Marketplace", farmJobs: "Farm Job Opportunities", storageHub: "Crop Storage Facilities", communityHub: "Farmers Community Forum", aiAdvisor: "AI Scheme Advisor", home: "Home", equipment: "Equipment", jobs: "Jobs", requests: "Requests", profile: "Profile", logout: "Log out", selectLanguage: "Select language", onboarding: "Set up your profile", skip: "Skip for now", continue: "Continue", finish: "Finish setup", back: "Back" , goodMorning: "GOOD MORNING", namaste: "Namaste", yourFarmArea: "Your farm area", connectedLive: "is connected live with Kisan Saathi.", addValidPincode: "Add a valid pincode to see local weather.", bookTractor: "Book Tractor", findLabor: "Find Labor", findStorage: "Find Storage", bookedServices: "Booked services", viewAll: "View all", noBookedServices: "You have no booked services yet.", villageVoices: "Village voices & Live forum", communityDiscussions: "Community Discussions", noMessagesYet: "No messages yet. Be the first to post!", shareTip: "Share a farming tip...", postBtn: "Post", todayWeather: "today's weather" },
+  hi: {  welcome: "स्वागत है", signIn: "जारी रखने के लिए साइन इन करें", chooseUse: "किसान साथी का उपयोग कैसे करेंगे? अपना मोबाइल नंबर दर्ज करें।", mobile: "मोबाइल नंबर", sendOtp: "वन-टाइम पासवर्ड भेजें", secure: "आपका नंबर सुरक्षित और निजी रहेगा।", whatNeed: "आपको क्या चाहिए?", schemes: "सरकारी योजनाएं", schemesHint: "आपकी फसल, जमीन और जरूरतों के आधार पर सुझाव।", apply: "क्या मैं आवेदन कर सकता हूं?", canIApply: "क्या मैं इस योजना के लिए आवेदन कर सकता हूं?", weatherTitle: "मौसम और कृषि सलाह", equipmentMarketplace: "उपकरण बाज़ार", farmJobs: "कृषि नौकरियां", storageHub: "फसल भंडारण", communityHub: "किसान मंच", aiAdvisor: "एआई योजना सलाहकार", home: "होम", equipment: "उपकरण", jobs: "काम", requests: "अनुरोध", profile: "प्रोफाइल", logout: "लॉग आउट", selectLanguage: "भाषा चुनें", onboarding: "अपनी प्रोफाइल बनाएं", skip: "अभी छोड़ें", continue: "जारी रखें", finish: "सेटअप पूरा करें" , goodMorning: "शुभ प्रभात", namaste: "नमस्ते", yourFarmArea: "आपका कृषि क्षेत्र", connectedLive: "किसान साथी से लाइव जुड़ा हुआ है।", addValidPincode: "स्थानीय मौसम देखने के लिए एक मान्य पिनकोड जोड़ें।", bookTractor: "ट्रैक्टर बुक करें", findLabor: "श्रमिक खोजें", findStorage: "भंडारण खोजें", bookedServices: "बुक की गई सेवाएं", viewAll: "सभी देखें", noBookedServices: "आपकी अभी तक कोई बुक की गई सेवा नहीं है।", villageVoices: "गांव की आवाज और लाइव मंच", communityDiscussions: "सामुदायिक चर्चाएं", noMessagesYet: "अभी तक कोई संदेश नहीं। सबसे पहले पोस्ट करें!", shareTip: "कृषि सुझाव साझा करें...", postBtn: "पोस्ट करें", todayWeather: "आज का मौसम" },
   mr: { welcome: "स्वागत आहे", signIn: "पुढे जाण्यासाठी साइन इन करा", chooseUse: "किसान साथी कसे वापराल? तुमचा मोबाईल नंबर टाका.", mobile: "मोबाईल नंबर", sendOtp: "वन-टाइम पासवर्ड पाठवा", secure: "तुमचा नंबर सुरक्षित आणि खासगी राहील.", whatNeed: "तुम्हाला काय हवे आहे?", schemes: "सरकारी योजना", schemesHint: "तुमची पिके, जमीन आणि गरजांवर आधारित सूचना.", apply: "मी अर्ज करू शकतो का?", home: "मुख्यपृष्ठ", equipment: "उपकरणे", jobs: "कामे", requests: "विनंत्या", profile: "प्रोफाइल", logout: "लॉग आउट", selectLanguage: "भाषा निवडा", onboarding: "प्रोफाइल तयार करा", skip: "आत्ता वगळा", continue: "पुढे चला", finish: "सेटअप पूर्ण करा" },
   bn: { welcome: "স্বাগতম", signIn: "চালিয়ে যেতে সাইন ইন করুন", chooseUse: "আপনি কিষান সাথী কীভাবে ব্যবহার করবেন? মোবাইল নম্বর দিন।", mobile: "মোবাইল নম্বর", sendOtp: "ওটিপি পাঠান", secure: "আপনার নম্বর নিরাপদ ও গোপন থাকবে।", whatNeed: "আপনার কী প্রয়োজন?", schemes: "সরকারি প্রকল্প", schemesHint: "আপনার ফসল, জমি ও প্রয়োজনের ভিত্তিতে পরামর্শ।", apply: "আমি কি আবেদন করতে পারি?", home: "হোম", equipment: "সরঞ্জাম", jobs: "কাজ", requests: "অনুরোধ", profile: "প্রোফাইল", logout: "লগ আউট", selectLanguage: "ভাষা নির্বাচন করুন", onboarding: "প্রোফাইল তৈরি করুন", skip: "এখন এড়িয়ে যান", continue: "চালিয়ে যান", finish: "সেটআপ শেষ করুন" },
   te: { welcome: "స్వాగతం", signIn: "కొనసాగించడానికి సైన్ ఇన్ చేయండి", chooseUse: "కిసాన్ సాథీని ఎలా ఉపయోగిస్తారు? మొబైల్ నంబర్ నమోదు చేయండి.", mobile: "మొబైల్ నంబర్", sendOtp: "వన్ టైమ్ పాస్‌వర్డ్ పంపండి", secure: "మీ నంబర్ సురక్షితంగా ఉంటుంది.", whatNeed: "మీకు ఏమి కావాలి?", schemes: "ప్రభుత్వ పథకాలు", schemesHint: "మీ పంటలు, భూమి మరియు అవసరాల ఆధారంగా సూచనలు.", apply: "నేను దరఖాస్తు చేయవచ్చా?", home: "హోమ్", equipment: "పరికరాలు", jobs: "పనులు", requests: "అభ్యర్థనలు", profile: "ప్రొఫైల్", logout: "లాగ్ అవుట్", selectLanguage: "భాషను ఎంచుకోండి", onboarding: "మీ ప్రొఫైల్ ఏర్పాటు చేయండి", skip: "ఇప్పుడు దాటవేయండి", continue: "కొనసాగించండి", finish: "సెటప్ పూర్తి చేయండి" },
-  ta: { welcome: "வரவேற்கிறோம்", signIn: "தொடர உள்நுழையவும்", chooseUse: "கிசான் சாதியை எப்படிப் பயன்படுத்துவீர்கள்? கைபேசி எண்ணை உள்ளிடவும்.", mobile: "கைபேசி எண்", sendOtp: "ஒருமுறை கடவுச்சொல் அனுப்பவும்", secure: "உங்கள் எண் பாதுகாப்பாக இருக்கும்.", whatNeed: "உங்களுக்கு என்ன தேவை?", schemes: "அரசுத் திட்டங்கள்", schemesHint: "உங்கள் பயிர்கள், நிலம் மற்றும் தேவைகளின் அடிப்படையில் பரிந்துரைகள்.", apply: "நான் விண்ணப்பிக்கலாமா?", home: "முகப்பு", equipment: "கருவிகள்", jobs: "வேலைகள்", requests: "கோரிக்கைகள்", profile: "சுயவிவரம்", logout: "வெளியேறு", selectLanguage: "மொழியைத் தேர்ந்தெடுக்கவும்", onboarding: "சுயவிவரத்தை அமைக்கவும்", skip: "இப்போது தவிர்க்கவும்", continue: "தொடரவும்", finish: "அமைப்பை முடிக்கவும்" },
+  ta: {  welcome: "வரவேற்கிறோம்", signIn: "தொடர உள்நுழையவும்", chooseUse: "கிசான் சாதியை எப்படிப் பயன்படுத்துவீர்கள்? கைபேசி எண்ணை உள்ளிடவும்.", mobile: "கைபேசி எண்", sendOtp: "ஒருமுறை கடவுச்சொல் அனுப்பவும்", secure: "உங்கள் எண் பாதுகாப்பாக இருக்கும்.", whatNeed: "உங்களுக்கு என்ன தேவை?", schemes: "அரசுத் திட்டங்கள்", schemesHint: "உங்கள் பயிர்கள், நிலம் மற்றும் தேவைகளின் அடிப்படையில் பரிந்துரைகள்.", apply: "நான் விண்ணப்பிக்கலாமா?", canIApply: "நான் இந்த திட்டத்திற்கு விண்ணப்பிக்கலாமா?", weatherTitle: "வானிலை மற்றும் ஆலோசனை", equipmentMarketplace: "கருவிகள் சந்தை", farmJobs: "விவசாய வேலைகள்", storageHub: "பயிர் சேமிப்பு", communityHub: "விவசாயிகள் மன்றம்", aiAdvisor: "ஏஐ திட்ட ஆலோசகர்", home: "முகப்பு", equipment: "கருவிகள்", jobs: "வேலைகள்", requests: "கோரிக்கைகள்", profile: "சுயவிவரம்", logout: "வெளியேறு", selectLanguage: "மொழியைத் தேர்ந்தெடுக்கவும்", onboarding: "சுயவிவரத்தை அமைக்கவும்", skip: "இப்போது தவிர்க்கவும்", continue: "தொடரவும்", finish: "அமைப்பை முடிக்கவும்" , goodMorning: "காலை வணக்கம்", namaste: "வணக்கம்", yourFarmArea: "உங்கள் விவசாயப் பகுதி", connectedLive: "கிசான் சாதியுடன் நேரலையில் இணைக்கப்பட்டுள்ளது.", addValidPincode: "உள்ளூர் வானிலையைப் பார்க்க பின்கோடைச் சேர்க்கவும்.", bookTractor: "டிராக்டர் முன்பதிவு", findLabor: "வேலையாட்களைக் கண்டறியவும்", findStorage: "சேமிப்பைக் கண்டறியவும்", bookedServices: "முன்பதிவு செய்யப்பட்ட சேவைகள்", viewAll: "அனைத்தையும் பார்", noBookedServices: "உங்களிடம் முன்பதிவு செய்யப்பட்ட சேவைகள் எதுவுமில்லை.", villageVoices: "கிராமக் குரல்கள் & மன்றம்", communityDiscussions: "சமூக விவாதங்கள்", noMessagesYet: "செய்திகள் எதுவும் இல்லை. முதலில் பதிவிடவும்!", shareTip: "விவசாய குறிப்பைப் பகிரவும்...", postBtn: "பதிவிடு", todayWeather: "இன்றைய வானிலை" },
   gu: { welcome: "સ્વાગત છે", signIn: "ચાલુ રાખવા માટે સાઇન ઇન કરો", chooseUse: "કિસાન સાથીનો ઉપયોગ કેવી રીતે કરશો? મોબાઇલ નંબર દાખલ કરો.", mobile: "મોબાઇલ નંબર", sendOtp: "વન-ટાઇમ પાસવર્ડ મોકલો", secure: "તમારો નંબર સુરક્ષિત અને ખાનગી રહેશે.", whatNeed: "તમને શું જોઈએ છે?", schemes: "સરકારી યોજનાઓ", schemesHint: "તમારા પાક, જમીન અને જરૂરિયાતો પર આધારિત સૂચનો.", apply: "શું હું અરજી કરી શકું?", home: "હોમ", equipment: "સાધનો", jobs: "કામ", requests: "વિનંતીઓ", profile: "પ્રોફાઇલ", logout: "લૉગ આઉટ", selectLanguage: "ભાષા પસંદ કરો", onboarding: "તમારી પ્રોફાઇલ સેટ કરો", skip: "હમણાં છોડો", continue: "ચાલુ રાખો", finish: "સેટઅપ પૂર્ણ કરો" },
   kn: { welcome: "ಸ್ವಾಗತ", signIn: "ಮುಂದುವರಿಯಲು ಸೈನ್ ಇನ್ ಮಾಡಿ", chooseUse: "ಕಿಸಾನ್ ಸಾಥಿಯನ್ನು ಹೇಗೆ ಬಳಸುತ್ತೀರಿ? ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ.", mobile: "ಮೊಬೈಲ್ ಸಂಖ್ಯೆ", sendOtp: "ಒಟಿಪಿ ಕಳುಹಿಸಿ", secure: "ನಿಮ್ಮ ಸಂಖ್ಯೆ ಸುರಕ್ಷಿತವಾಗಿರುತ್ತದೆ.", whatNeed: "ನಿಮಗೆ ಏನು ಬೇಕು?", schemes: "ಸರ್ಕಾರಿ ಯೋಜನೆಗಳು", schemesHint: "ನಿಮ್ಮ ಬೆಳೆಗಳು, ಭೂಮಿ ಮತ್ತು ಅಗತ್ಯಗಳ ಆಧಾರದ ಸಲಹೆಗಳು.", apply: "ನಾನು ಅರ್ಜಿ ಸಲ್ಲಿಸಬಹುದೇ?", home: "ಮುಖಪುಟ", equipment: "ಉಪಕರಣಗಳು", jobs: "ಕೆಲಸಗಳು", requests: "ವಿನಂತಿಗಳು", profile: "ಪ್ರೊಫೈಲ್", logout: "ಲಾಗ್ ಔಟ್", selectLanguage: "ಭಾಷೆ ಆಯ್ಕೆಮಾಡಿ", onboarding: "ನಿಮ್ಮ ಪ್ರೊಫೈಲ್ ಹೊಂದಿಸಿ", skip: "ಈಗ ಬಿಟ್ಟುಬಿಡಿ", continue: "ಮುಂದುವರಿಸಿ", finish: "ಸೆಟಪ್ ಮುಗಿಸಿ" },
-  ml: { welcome: "സ്വാഗതം", signIn: "തുടരാൻ സൈൻ ഇൻ ചെയ്യുക", chooseUse: "കിസാൻ സാഥി എങ്ങനെ ഉപയോഗിക്കും? മൊബൈൽ നമ്പർ നൽകുക.", mobile: "മൊബൈൽ നമ്പർ", sendOtp: "ഒടിപി അയയ്ക്കുക", secure: "നിങ്ങളുടെ നമ്പർ സുരക്ഷിതമായിരിക്കും.", whatNeed: "നിങ്ങൾക്ക് എന്താണ് വേണ്ടത്?", schemes: "സർക്കാർ പദ്ധതികൾ", schemesHint: "നിങ്ങളുടെ വിളകൾ, ഭൂമി, ആവശ്യങ്ങൾ എന്നിവ അടിസ്ഥാനമാക്കിയുള്ള നിർദ്ദേശങ്ങൾ.", apply: "എനിക്ക് അപേക്ഷിക്കാമോ?", home: "ഹോം", equipment: "ഉപകരണങ്ങൾ", jobs: "ജോലികൾ", requests: "അഭ്യർത്ഥനകൾ", profile: "പ്രൊഫൈൽ", logout: "ലോഗ് ഔട്ട്", selectLanguage: "ഭാഷ തിരഞ്ഞെടുക്കുക", onboarding: "പ്രൊഫൈൽ സജ്ജമാക്കുക", skip: "ഇപ്പോൾ ഒഴിവാക്കുക", continue: "തുടരുക", finish: "സജ്ജീകരണം പൂർത്തിയാക്കുക" },
+  ml: {  welcome: "സ്വാഗതം", signIn: "തുടരാൻ സൈൻ ഇൻ ചെയ്യുക", chooseUse: "കിസാൻ സാഥി എങ്ങനെ ഉപയോഗിക്കും? മൊബൈൽ നമ്പർ നൽകുക.", mobile: "മൊബൈൽ നമ്പർ", sendOtp: "ഒടിപി അയയ്ക്കുക", secure: "നിങ്ങളുടെ നമ്പർ സുരക്ഷിതമായിരിക്കും.", whatNeed: "നിങ്ങൾക്ക് എന്താണ് വേണ്ടത്?", schemes: "സർക്കാർ പദ്ധതികൾ", schemesHint: "നിങ്ങളുടെ വിളകൾ, ഭൂമി, ആവശ്യങ്ങൾ എന്നിവ അടിസ്ഥാനമാക്കിയുള്ള നിർദ്ദേശങ്ങൾ.", apply: "എനിക്ക് അപേക്ഷിക്കാമോ?", canIApply: "എനിക്ക് ഇതിന് അപേക്ഷിക്കാമോ?", weatherTitle: "കാലാവസ്ഥയും വിവരങ്ങളും", equipmentMarketplace: "ഉപകരണ വിപണി", farmJobs: "തൊഴിൽ അവസരങ്ങൾ", storageHub: "വിള സംഭരണം", communityHub: "കർഷക കൂട്ടായ്മ", aiAdvisor: "എഐ സ്കീം അഡ്വൈസർ", home: "ഹോം", equipment: "ഉപകരണങ്ങൾ", jobs: "ജോലികൾ", requests: "അഭ്യർത്ഥനകൾ", profile: "പ്രൊഫൈൽ", logout: "ലോഗ് ഔട്ട്", selectLanguage: "ഭാഷ തിരഞ്ഞെടുക്കുക", onboarding: "പ്രൊഫൈൽ സജ്ജമാക്കുക", skip: "ഇപ്പോൾ ഒഴിവാക്കുക", continue: "തുടരുക", finish: "സജ്ജീകരണം പൂർത്തിയാക്കുക" , goodMorning: "സുപ്രഭാതം", namaste: "നമസ്കാരം", yourFarmArea: "നിങ്ങളുടെ കാർഷിക മേഖല", connectedLive: "കിസാൻ സാഥിയുമായി തത്സമയം ബന്ധിപ്പിച്ചിരിക്കുന്നു.", addValidPincode: "പ്രാദേശിക കാലാവസ്ഥ കാണാൻ പിൻകോഡ് നൽകുക.", bookTractor: "ട്രാക്ടർ ബുക്ക് ചെയ്യുക", findLabor: "തൊഴിലാളികളെ കണ്ടെത്തുക", findStorage: "സംഭരണം കണ്ടെത്തുക", bookedServices: "ബുക്ക് ചെയ്ത സേവനങ്ങൾ", viewAll: "എല്ലാം കാണുക", noBookedServices: "നിങ്ങൾക്ക് ഇതുവരെ ബുക്ക് ചെയ്ത സേവനങ്ങളൊന്നുമില്ല.", villageVoices: "ഗ്രാമ ശബ്ദങ്ങളും ഫോറവും", communityDiscussions: "കമ്മ്യൂണിറ്റി ചർച്ചകൾ", noMessagesYet: "സന്ദേശങ്ങളൊന്നുമില്ല. ആദ്യം പോസ്റ്റ് ചെയ്യൂ!", shareTip: "കൃഷി ടിപ്പ് പങ്കിടുക...", postBtn: "പോസ്റ്റ് ചെയ്യുക", todayWeather: "ഇന്നത്തെ കാലാവസ്ഥ" },
   pa: { welcome: "ਜੀ ਆਇਆਂ ਨੂੰ", signIn: "ਜਾਰੀ ਰੱਖਣ ਲਈ ਸਾਈਨ ਇਨ ਕਰੋ", chooseUse: "ਤੁਸੀਂ ਕਿਸਾਨ ਸਾਥੀ ਨੂੰ ਕਿਵੇਂ ਵਰਤੋਗੇ? ਮੋਬਾਈਲ ਨੰਬਰ ਦਿਓ।", mobile: "ਮੋਬਾਈਲ ਨੰਬਰ", sendOtp: "ਓਟੀਪੀ ਭੇਜੋ", secure: "ਤੁਹਾਡਾ ਨੰਬਰ ਸੁਰੱਖਿਅਤ ਰਹੇਗਾ।", whatNeed: "ਤੁਹਾਨੂੰ ਕੀ ਚਾਹੀਦਾ ਹੈ?", schemes: "ਸਰਕਾਰੀ ਯੋਜਨਾਵਾਂ", schemesHint: "ਤੁਹਾਡੀਆਂ ਫਸਲਾਂ, ਜ਼ਮੀਨ ਅਤੇ ਲੋੜਾਂ ਦੇ ਆਧਾਰ ਤੇ ਸੁਝਾਅ।", apply: "ਕੀ ਮੈਂ ਅਰਜ਼ੀ ਦੇ ਸਕਦਾ ਹਾਂ?", home: "ਘਰ", equipment: "ਸਾਜ਼ੋ-ਸਾਮਾਨ", jobs: "ਕੰਮ", requests: "ਬੇਨਤੀਆਂ", profile: "ਪ੍ਰੋਫਾਈਲ", logout: "ਲੌਗ ਆਊਟ", selectLanguage: "ਭਾਸ਼ਾ ਚੁਣੋ", onboarding: "ਪ੍ਰੋਫਾਈਲ ਬਣਾਓ", skip: "ਹੁਣੇ ਛੱਡੋ", continue: "ਜਾਰੀ ਰੱਖੋ", finish: "ਸੈੱਟਅੱਪ ਪੂਰਾ ਕਰੋ" },
   or: { welcome: "ସ୍ୱାଗତ", signIn: "ଜାରି ରଖିବାକୁ ସାଇନ୍ ଇନ୍ କରନ୍ତୁ", chooseUse: "ଆପଣ କିସାନ ସାଥୀକୁ କିପରି ବ୍ୟବହାର କରିବେ? ମୋବାଇଲ୍ ନମ୍ବର ଦିଅନ୍ତୁ।", mobile: "ମୋବାଇଲ୍ ନମ୍ବର", sendOtp: "ଓଟିପି ପଠାନ୍ତୁ", secure: "ଆପଣଙ୍କ ନମ୍ବର ସୁରକ୍ଷିତ ରହିବ।", whatNeed: "ଆପଣଙ୍କର କଣ ଦରକାର?", schemes: "ସରକାରୀ ଯୋଜନା", schemesHint: "ଆପଣଙ୍କ ଫସଲ, ଜମି ଓ ଆବଶ୍ୟକତା ଆଧାରିତ ପରାମର୍ଶ।", apply: "ମୁଁ ଆବେଦନ କରିପାରିବି କି?", home: "ହୋମ୍", equipment: "ଉପକରଣ", jobs: "କାମ", requests: "ଅନୁରୋଧ", profile: "ପ୍ରୋଫାଇଲ୍", logout: "ଲଗ୍ ଆଉଟ୍", selectLanguage: "ଭାଷା ବାଛନ୍ତୁ", onboarding: "ପ୍ରୋଫାଇଲ୍ ସେଟ୍ କରନ୍ତୁ", skip: "ବର୍ତ୍ତମାନ ଛାଡନ୍ତୁ", continue: "ଜାରି ରଖନ୍ତୁ", finish: "ସେଟଅପ୍ ସମାପ୍ତ କରନ୍ତୁ" },
   as: { welcome: "স্বাগতম", signIn: "আগবাঢ়িবলৈ ছাইন ইন কৰক", chooseUse: "আপুনি কিষাণ সাথী কেনেকৈ ব্যৱহাৰ কৰিব? মোবাইল নম্বৰ দিয়ক।", mobile: "মোবাইল নম্বৰ", sendOtp: "ওটিপি পঠিয়াওক", secure: "আপোনাৰ নম্বৰ সুৰক্ষিত থাকিব।", whatNeed: "আপোনাক কি লাগে?", schemes: "চৰকাৰী আঁচনি", schemesHint: "আপোনাৰ শস্য, মাটি আৰু প্ৰয়োজনৰ ওপৰত ভিত্তি কৰি পৰামৰ্শ।", apply: "মই আবেদন কৰিব পাৰোঁনে?", home: "হোম", equipment: "সঁজুলি", jobs: "কাম", requests: "অনুৰোধ", profile: "প্ৰফাইল", logout: "লগ আউট", selectLanguage: "ভাষা বাছক", onboarding: "আপোনাৰ প্ৰফাইল সাজু কৰক", skip: "এতিয়া বাদ দিয়ক", continue: "আগবাঢ়ক", finish: "ছেটআপ সম্পূৰ্ণ কৰক" },
@@ -254,9 +255,9 @@ function Dashboard({ notify, go, profile, language }: { notify: (message: string
 
   const quick = [
     { label: "Book Tractor", icon: "tractor" as IconName, color: "green", page: "market" },
-    { label: "Find Labor", icon: "users" as IconName, color: "gold", page: profile.role === "Farmer" ? "workers" : "jobs" },
-    { label: "Find Storage", icon: "warehouse" as IconName, color: "blue", page: "market" },
-    { label: "Government schemes", icon: "shield" as IconName, color: "purple", page: "schemes" },
+    { label: text(language, "findLabor"), icon: "users" as IconName, color: "gold", page: profile.role === "Farmer" ? "workers" : "jobs" },
+    { label: text(language, "findStorage"), icon: "warehouse" as IconName, color: "blue", page: "market" },
+    { label: text(language, "schemes"), icon: "shield" as IconName, color: "purple", page: "schemes" },
   ];
 
   const displayName = profile.account?.firstName || profile.dbProfile?.full_name?.split(" ")[0] || "Farmer";
@@ -264,15 +265,15 @@ function Dashboard({ notify, go, profile, language }: { notify: (message: string
   return <main className="page-content">
     <section className="hero">
       <div className="hero-copy">
-        <div className="eyebrow">GOOD MORNING</div>
-        <h1>Namaste, {displayName}!</h1>
-        <p>{profile.account?.city && profile.account.state ? `${profile.account.city}, ${profile.account.state}` : "Your farm area"} is connected live with Kisan Saathi.</p>
+        <div className="eyebrow">{text(language, "goodMorning")}</div>
+        <h1>{text(language, "namaste")}, {displayName}!</h1>
+        <p>{profile.account?.city && profile.account.state ? `${profile.account.city}, ${profile.account.state}` : text(language, "yourFarmArea")} {text(language, "connectedLive")}</p>
       </div>
       <img src={photos.farmer} alt="Farmer standing in a green field" />
     </section>
 
     <section className="weather-card">
-      {weather ? <><div className="weather-main"><div className="sun-icon"><Icon name="sun" size={34} /></div><div><strong>{weather.temperature}°</strong><span>{weather.description}</span></div></div><div className="weather-place"><Icon name="map" size={18} /><span>{weather.location}<br /><b>{weather.advice}</b></span></div></> : <div className="weather-unavailable"><Icon name="cloud" size={25} /><span>Add a valid pincode to see local weather.</span></div>}
+      {weather ? <><div className="weather-main"><div className="sun-icon"><Icon name="sun" size={34} /></div><div><strong>{weather.temperature}°</strong><span>{weather.description}</span></div></div><div className="weather-place"><Icon name="map" size={18} /><span>{weather.location}<br /><b>{weather.advice}</b></span></div></> : <div className="weather-unavailable"><Icon name="cloud" size={25} /><span>{text(language, "addValidPincode")}</span></div>}
       <SpeakButton label="today's weather" />
     </section>
 
@@ -284,16 +285,16 @@ function Dashboard({ notify, go, profile, language }: { notify: (message: string
       </button>)}
     </div>
 
-    <SectionTitle action="View all" onAction={() => go("requests")}>Booked services</SectionTitle>
-    {bookings.length === 0 ? <p className="empty-state">You have no booked services yet.</p> : bookings.map(booking => <section className="request-card" key={booking.id}><div className="request-top"><span className="request-image"><Icon name={booking.item_type === "storage" ? "warehouse" : "tractor"} size={30} /></span><div><span className={`status ${booking.status === "confirmed" ? "live" : "pending"}`}>{booking.status}</span><h3>{booking.item_type === "storage" ? "Storage booking" : "Equipment booking"}</h3><p><Icon name="calendar" size={16} /> {booking.start_date || "Date pending"}</p></div></div></section>)}
+    <SectionTitle action={text(language, "viewAll")} onAction={() => go("requests")}>{text(language, "bookedServices")}</SectionTitle>
+    {bookings.length === 0 ? <p className="empty-state">{text(language, "noBookedServices")}</p> : bookings.map(booking => <section className="request-card" key={booking.id}><div className="request-top"><span className="request-image"><Icon name={booking.item_type === "storage" ? "warehouse" : "tractor"} size={30} /></span><div><span className={`status ${booking.status === "confirmed" ? "live" : "pending"}`}>{booking.status}</span><h3>{booking.item_type === "storage" ? "Storage booking" : "Equipment booking"}</h3><p><Icon name="calendar" size={16} /> {booking.start_date || "Date pending"}</p></div></div></section>)}
 
-    <SectionTitle action="Community">Village voices & Live forum</SectionTitle>
+    <SectionTitle action={text(language, "community")} onAction={() => go("community")}>{text(language, "villageVoices")}</SectionTitle>
     <section className="voice-card">
       <div>
         <span className="status live">Live Feed</span>
-        <h3>Community Discussions</h3>
+        <h3>{text(language, "communityDiscussions")}</h3>
         <div style={{ maxHeight: '120px', overflowY: 'auto', marginBottom: '10px' }}>
-          {messages.length === 0 ? <p>No messages yet. Be the first to post!</p> : messages.slice(-3).map((m, i) => (
+          {messages.length === 0 ? <p>{text(language, "noMessagesYet")}</p> : messages.slice(-3).map((m, i) => (
             <div key={m.id || i} style={{ fontSize: '0.85rem', margin: '4px 0' }}>
               <b>{m.sender?.full_name || 'Neighbor'}:</b> {m.content}
             </div>
@@ -301,7 +302,7 @@ function Dashboard({ notify, go, profile, language }: { notify: (message: string
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <input
-            placeholder="Share a farming tip..."
+            placeholder={text(language, "shareTip")}
             value={newMsg}
             onChange={e => setNewMsg(e.target.value)}
             style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }}
@@ -314,11 +315,12 @@ function Dashboard({ notify, go, profile, language }: { notify: (message: string
             }}
             label="Speak Tip"
           />
-          <button className="primary-action" style={{ width: 'auto', padding: '0 12px' }} onClick={handleSendMessage}>Post</button>
+          <button className="primary-action" style={{ width: 'auto', padding: '0 12px' }} onClick={handleSendMessage}>{text(language, "postBtn")}</button>
         </div>
       </div>
     </section>
-  </main>;
+  
+    </main>;
 }
 
 const OFFICIAL_GOVERNMENT_SCHEMES = [
@@ -496,6 +498,7 @@ function GovernmentSchemes({ profile, notify, language }: { profile: OnboardingP
   const [schemes, setSchemes] = useState<any[]>(OFFICIAL_GOVERNMENT_SCHEMES);
   const [loading, setLoading] = useState(true);
   const [activeScheme, setActiveScheme] = useState<any | null>(null);
+  const [quizScheme, setQuizScheme] = useState<any | null>(null);
   const [query, setQuery] = useState("");
   const [searchFilter, setSearchFilter] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -678,7 +681,10 @@ function GovernmentSchemes({ profile, notify, language }: { profile: OnboardingP
               />
 
               <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                <button className="scheme-apply" onClick={() => setActiveScheme(scheme)}>
+                <button className="scheme-apply" style={{ background: "#16a34a", color: "#ffffff", display: "inline-flex", alignItems: "center", gap: "6px", border: "none", cursor: "pointer" }} onClick={() => setQuizScheme(scheme)}>
+                🎙️ {text(language, "canIApply") || "Can I apply for this?"}
+              </button>
+              <button className="scheme-apply" onClick={() => setActiveScheme(scheme)}>
                   View Full Details & Requirements <Icon name="chevron" size={17} />
                 </button>
               </div>
@@ -1127,13 +1133,7 @@ function Profile({
       <button className="logout-button" onClick={onLogout}><Icon name="close" size={18} /> {text(language, "logout")}</button>
     </section>
 
-    <PersonalizationSection
-      user={user}
-      profile={profile}
-      notify={notify}
-      language={language}
-      onProfileUpdated={onProfileUpdated}
-    />
+    
   </main>;
 }
 
