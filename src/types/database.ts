@@ -161,6 +161,16 @@ export interface GovernmentScheme {
   eligibility_criteria: Record<string, any>;
   benefits: string;
   official_link: string | null;
+  official_apply_url?: string | null;
+  application_method?: string | null;
+  application_deadline?: string | null;
+  source_url?: string | null;
+  source_type?: string;
+  source_hash?: string | null;
+  source_checked_at?: string | null;
+  source_updated_at?: string | null;
+  verification_status?: 'unverified' | 'verified' | 'stale';
+  active?: boolean;
   created_at: string;
 }
 

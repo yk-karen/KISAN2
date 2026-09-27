@@ -117,7 +117,7 @@ serve(async (req: Request) => {
     // 4. Fetch Trusted Government Schemes Data Directly from Database Server-Side
     const { data: trustedSchemes, error: dbError } = await supabase
       .from("government_schemes")
-      .select("id, title, category, description, benefits, eligibility_criteria, official_link");
+      .select("id, title, category, description, benefits, eligibility_criteria, official_link, official_apply_url, application_method, application_deadline, source_updated_at, verification_status");
 
     if (dbError) {
       return new Response(
@@ -138,10 +138,12 @@ serve(async (req: Request) => {
     // 6. Build Grounded Prompt with Strict Isolation
     const systemPrompt = `You are Kisan AI, an expert agricultural scheme and farming advisor for Indian rural farmers.
 CRITICAL INSTRUCTIONS:
-- You must ONLY recommend government schemes present in the provided Trusted Database Schemes list below.
-- DO NOT invent, hallucinate, or reference any external government scheme titles or eligibility rules not present in the trusted context.
-- If no scheme in the context matches, state clearly that no specific scheme in our database matches the query.
-- Format responses strictly in simple, clear JSON. Keep advice practical, encouraging, and in clear simple language (${language}).`;
+- Only discuss schemes supplied in the verified database context below.
+- Never invent scheme names, benefits, eligibility requirements, deadlines, or URLs.
+- Never generate application URLs or portal web links in your output. Official application links are rendered separately by verified UI components.
+- If information is absent or unknown, explicitly state that it is not specified in the official record.
+- Do not make definitive claims of legal eligibility. Always advise the farmer that official government authorities determine final approval.
+- Format responses strictly in simple, clear JSON using clear language (${language}).`;
 
     const trustedContextString = JSON.stringify(trustedSchemes || [], null, 2);
 

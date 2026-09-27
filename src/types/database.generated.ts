@@ -136,48 +136,63 @@ export type Database = {
       government_schemes: {
         Row: {
           active: boolean
+          application_deadline: string | null
+          application_method: string | null
           benefits: string
           category: string
           created_at: string
           description: string
           eligibility_criteria: Json
           id: string
+          official_apply_url: string | null
           official_link: string | null
           source_checked_at: string | null
           source_hash: string | null
           source_type: string
+          source_updated_at: string | null
           source_url: string | null
           title: string
+          verification_status: string
         }
         Insert: {
           active?: boolean
+          application_deadline?: string | null
+          application_method?: string | null
           benefits: string
           category: string
           created_at?: string
           description: string
           eligibility_criteria?: Json
           id?: string
+          official_apply_url?: string | null
           official_link?: string | null
           source_checked_at?: string | null
           source_hash?: string | null
           source_type?: string
+          source_updated_at?: string | null
           source_url?: string | null
           title: string
+          verification_status?: string
         }
         Update: {
           active?: boolean
+          application_deadline?: string | null
+          application_method?: string | null
           benefits?: string
           category?: string
           created_at?: string
           description?: string
           eligibility_criteria?: Json
           id?: string
+          official_apply_url?: string | null
           official_link?: string | null
           source_checked_at?: string | null
           source_hash?: string | null
           source_type?: string
+          source_updated_at?: string | null
           source_url?: string | null
           title?: string
+          verification_status?: string
         }
         Relationships: []
       }

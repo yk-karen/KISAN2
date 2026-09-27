@@ -39,6 +39,12 @@ const SERVER_CONTEXT_SCHEMAS: Record<string, ContextSchema> = {
       description: { type: "string", maxLength: 500 },
     },
   },
+  equipment_search: {
+    allowedFields: {
+      search_query: { type: "string", maxLength: 100 },
+      category: { type: "string", maxLength: 50 },
+    },
+  },
   job_posting: {
     allowedFields: {
       title: { type: "string", maxLength: 100 },
@@ -48,6 +54,16 @@ const SERVER_CONTEXT_SCHEMAS: Record<string, ContextSchema> = {
       description: { type: "string", maxLength: 500 },
     },
   },
+  job_search: {
+    allowedFields: {
+      search_query: { type: "string", maxLength: 100 },
+    },
+  },
+  job_application: {
+    allowedFields: {
+      notes: { type: "string", maxLength: 200 },
+    },
+  },
   storage_listing: {
     allowedFields: {
       title: { type: "string", maxLength: 100 },
@@ -55,6 +71,25 @@ const SERVER_CONTEXT_SCHEMAS: Record<string, ContextSchema> = {
       total_capacity_tons: { type: "number", min: 0, max: 100000 },
       rate_per_ton_day: { type: "number", min: 0, max: 10000 },
       location_address: { type: "string", maxLength: 200 },
+    },
+  },
+  storage_search: {
+    allowedFields: {
+      search_query: { type: "string", maxLength: 100 },
+      storage_type: { type: "string", maxLength: 50 },
+    },
+  },
+  service_request: {
+    allowedFields: {
+      start_date: { type: "date" },
+      end_date: { type: "date" },
+      quantity_tons: { type: "number", min: 0, max: 100000 },
+      notes: { type: "string", maxLength: 200 },
+    },
+  },
+  community_post: {
+    allowedFields: {
+      content: { type: "string", maxLength: 500 },
     },
   },
   profile: {
@@ -73,6 +108,11 @@ const SERVER_CONTEXT_SCHEMAS: Record<string, ContextSchema> = {
       equipment_types: { type: "array", maxItems: 10, maxItemLength: 50 },
       work_skills: { type: "array", maxItems: 10, maxItemLength: 50 },
       storage_types: { type: "array", maxItems: 10, maxItemLength: 50 },
+    },
+  },
+  scheme_search: {
+    allowedFields: {
+      query: { type: "string", maxLength: 300 },
     },
   },
 };

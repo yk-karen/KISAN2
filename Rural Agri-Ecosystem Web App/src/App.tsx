@@ -22,6 +22,10 @@ import {
   updatePersonalizationProfile,
 } from "../../src/lib/api";
 import { VoiceInputButton } from "../../src/components/VoiceInputButton";
+import { SpeakButton as RealSpeakButton } from "../../src/components/SpeakButton";
+import { matchSchemeForProfile } from "../../src/lib/schemeMatching";
+import { SchemeMatchInfo } from "../../src/components/SchemeMatchInfo";
+import { OfficialApplyButton } from "../../src/components/OfficialApplyButton";
 
 type WeatherState = { temperature: number; description: string; location: string; advice: string } | null;
 
@@ -166,9 +170,9 @@ export function formatE164Phone(rawPhone: string): string {
   return `+${digits}`;
 }
 
-function SpeakButton({ label, hidden = false }: { label: string; hidden?: boolean }) {
+function SpeakButton({ text, label, language = "en", hidden = false, compact = true }: { text?: string; label: string; language?: string; hidden?: boolean; compact?: boolean }) {
   if (hidden) return null;
-  return <button aria-label={`Listen to ${label}`} className="icon-button"><Icon name="speaker" size={20} /></button>;
+  return <RealSpeakButton text={text || label} language={language} label={label} compact={compact} />;
 }
 
 function SectionTitle({ children, action, onAction }: { children: ReactNode; action?: string; onAction?: () => void }) {
@@ -301,6 +305,14 @@ function Dashboard({ notify, go, profile, language }: { notify: (message: string
             value={newMsg}
             onChange={e => setNewMsg(e.target.value)}
             style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }}
+          />
+          <VoiceInputButton
+            context="community_post"
+            appLanguage={language}
+            onPopulate={(fields) => {
+              if (fields.content) setNewMsg(fields.content);
+            }}
+            label="Speak Tip"
           />
           <button className="primary-action" style={{ width: 'auto', padding: '0 12px' }} onClick={handleSendMessage}>Post</button>
         </div>
@@ -554,13 +566,28 @@ function GovernmentSchemes({ profile, notify, language }: { profile: OnboardingP
           onChange={e => setQuery(e.target.value)}
           style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd' }}
         />
+        <VoiceInputButton
+          context="scheme_search"
+          appLanguage={language}
+          onPopulate={(fields) => {
+            if (fields.query) setQuery(fields.query);
+          }}
+          label="Voice Question"
+        />
         <button className="primary-action" style={{ width: 'auto', padding: '0 16px' }} disabled={advisorLoading} onClick={handleAskAdvisor}>
           {advisorLoading ? "Thinking..." : "Ask AI Advisor"}
         </button>
       </div>
       {advisorResponse && (
         <div style={{ marginTop: '12px', padding: '12px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-          <h4>Advisor Response:</h4>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <h4 style={{ margin: 0 }}>Advisor Response:</h4>
+            <SpeakButton
+              text={`${advisorResponse.advice}. ${advisorResponse.recommendations?.map((r: any) => `${r.scheme_title}: ${r.reason}`).join('. ') || ''}`}
+              language={language}
+              label="Advisor response"
+            />
+          </div>
           <p>{advisorResponse.advice}</p>
           {advisorResponse.recommendations?.map((r: any, idx: number) => (
             <div key={idx} style={{ margin: '6px 0', fontSize: '0.9rem' }}>
@@ -601,29 +628,59 @@ function GovernmentSchemes({ profile, notify, language }: { profile: OnboardingP
           <article className="scheme-card" key={scheme.id || scheme.title}>
             <span className="scheme-icon"><Icon name="shield" size={28} /></span>
             <div style={{ width: '100%' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <span className="status live" style={{ fontSize: '0.75rem' }}>{scheme.category}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '6px' }}>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span className="status live" style={{ fontSize: '0.75rem' }}>{scheme.category || 'General'}</span>
+                  {scheme.verification_status === 'verified' && (
+                    <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: '#dcfce7', color: '#166534', borderRadius: '4px', border: '1px solid #bbf7d0', fontWeight: 600 }}>Source checked</span>
+                  )}
+                  {scheme.verification_status === 'stale' && (
+                    <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: '#fef3c7', color: '#92400e', borderRadius: '4px', border: '1px solid #fde68a', fontWeight: 600 }}>Source needs re-checking</span>
+                  )}
+                  {(!scheme.verification_status || scheme.verification_status === 'unverified') && (
+                    <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: '#f1f5f9', color: '#475569', borderRadius: '4px', border: '1px solid #e2e8f0', fontWeight: 600 }}>Source verification pending</span>
+                  )}
+                </div>
+                <SpeakButton
+                  text={`${scheme.title}. ${scheme.description}. Key benefits: ${scheme.benefits}`}
+                  language={language}
+                  label={scheme.title}
+                />
               </div>
               <h3 style={{ marginTop: '4px' }}>{scheme.title}</h3>
               <p>{scheme.description}</p>
               <div style={{ margin: '8px 0', padding: '8px', background: '#f8fafc', borderRadius: '6px', borderLeft: '3px solid #16a34a' }}>
                 <small><b>Key Benefits:</b> {scheme.benefits}</small>
               </div>
-              <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                <button className="scheme-apply" onClick={() => setActiveScheme(scheme)}>
-                  View Official Details <Icon name="chevron" size={17} />
-                </button>
-                {scheme.official_link && (
-                  <a
-                    href={scheme.official_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="scheme-apply"
-                    style={{ textDecoration: 'none', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}
-                  >
-                    Official Portal ↗
-                  </a>
+
+              {/* Application Deadline */}
+              <div style={{ margin: '6px 0', fontSize: '0.8rem' }}>
+                {scheme.application_deadline ? (
+                  (new Date(scheme.application_deadline) < new Date()) ? (
+                    <span style={{ color: '#dc2626', fontWeight: 600 }}>Application deadline has passed ({scheme.application_deadline})</span>
+                  ) : (
+                    <span style={{ color: '#475569' }}>Application Deadline: {scheme.application_deadline}</span>
+                  )
+                ) : (
+                  <span style={{ color: '#94a3b8' }}>Deadline: Not specified</span>
                 )}
+              </div>
+
+              {/* Personalized Match Reasons */}
+              <SchemeMatchInfo match={matchSchemeForProfile(scheme, profile.dbProfile || null)} schemeTitle={scheme.title} />
+
+              {/* Safe Official Apply Button */}
+              <OfficialApplyButton
+                officialApplyUrl={scheme.official_apply_url}
+                officialLink={scheme.official_link}
+                sourceUrl={scheme.source_url}
+                applicationMethod={scheme.application_method}
+              />
+
+              <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                <button className="scheme-apply" onClick={() => setActiveScheme(scheme)}>
+                  View Full Details & Requirements <Icon name="chevron" size={17} />
+                </button>
               </div>
             </div>
           </article>
@@ -640,7 +697,14 @@ function GovernmentSchemes({ profile, notify, language }: { profile: OnboardingP
       <div className="scheme-question-panel" style={{ maxHeight: '85vh', overflowY: 'auto' }}>
         <button className="scheme-close" onClick={() => setActiveScheme(null)}><Icon name="close" /></button>
         <span className="eyebrow">{activeScheme.category}</span>
-        <h2>{activeScheme.title}</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+          <h2>{activeScheme.title}</h2>
+          <SpeakButton
+            text={`${activeScheme.title}. ${activeScheme.description}. Benefits: ${activeScheme.benefits}`}
+            language={language}
+            label={activeScheme.title}
+          />
+        </div>
         <p style={{ fontSize: '1rem', color: '#475569', marginBottom: '16px' }}>{activeScheme.description}</p>
 
         <div style={{ margin: '14px 0', padding: '12px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
@@ -669,19 +733,27 @@ function GovernmentSchemes({ profile, notify, language }: { profile: OnboardingP
           </div>
         )}
 
-        {activeScheme.official_link && (
-          <div style={{ marginTop: '16px', display: 'flex', gap: '10px' }}>
-            <a
-              href={activeScheme.official_link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="primary-action"
-              style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-            >
-              Apply / Visit Official Government Portal ↗
-            </a>
-          </div>
-        )}
+        <SchemeMatchInfo match={matchSchemeForProfile(activeScheme, profile.dbProfile || null)} schemeTitle={activeScheme.title} />
+
+        <div style={{ margin: '12px 0', padding: '10px 12px', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.875rem' }}>
+          <strong>Application Deadline: </strong>
+          {activeScheme.application_deadline ? (
+            new Date(activeScheme.application_deadline) < new Date() ? (
+              <span style={{ color: '#dc2626', fontWeight: 600 }}>Application deadline has passed ({activeScheme.application_deadline})</span>
+            ) : (
+              <span style={{ color: '#1e293b' }}>{activeScheme.application_deadline}</span>
+            )
+          ) : (
+            <span style={{ color: '#64748b' }}>Not specified</span>
+          )}
+        </div>
+
+        <OfficialApplyButton
+          officialApplyUrl={activeScheme.official_apply_url}
+          officialLink={activeScheme.official_link}
+          sourceUrl={activeScheme.source_url}
+          applicationMethod={activeScheme.application_method}
+        />
       </div>
     )}
   </main>;
@@ -740,7 +812,22 @@ function Marketplace({ notify, user, language = "en" }: { notify: (message: stri
 
   return <main className="page-content">
     <div className="page-heading"><div><span className="eyebrow">NEAR YOUR FARM</span><h1>Book equipment & storage</h1><p>Live listings from verified local providers.</p></div><SpeakButton label="equipment marketplace" /></div>
-    <label className="search-box"><Icon name="search" /><input aria-label="Search equipment" placeholder="Search tractor, tiller..." value={query} onChange={event => setQuery(event.target.value)} /><button type="button" onClick={() => { setQuery(""); setCategory("All tools") }}>Clear</button></label>
+    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '12px' }}>
+      <label className="search-box" style={{ flex: 1, margin: 0 }}>
+        <Icon name="search" />
+        <input aria-label="Search equipment" placeholder="Search tractor, tiller..." value={query} onChange={event => setQuery(event.target.value)} />
+        <button type="button" onClick={() => { setQuery(""); setCategory("All tools") }}>Clear</button>
+      </label>
+      <VoiceInputButton
+        context="equipment_search"
+        appLanguage={language}
+        onPopulate={(fields) => {
+          if (fields.search_query) setQuery(fields.search_query);
+          if (fields.category) setCategory(fields.category);
+        }}
+        label="Voice Search"
+      />
+    </div>
     <div className="filter-row">{["All tools", "Tractor", "Tiller", "Harvester"].map(filter => <button className={category === filter ? "active" : ""} key={filter} onClick={() => setCategory(filter)}>{filter}</button>)}</div>
 
     {loading ? <p>Loading live marketplace items...</p> : (
@@ -748,7 +835,7 @@ function Marketplace({ notify, user, language = "en" }: { notify: (message: stri
         {filteredEquipment.map(item => <article className="equipment-card" key={item.id}>
           <div className="equipment-photo"><img src={item.images?.[0] || photos.tractor} alt={item.title} /><span className={`availability ${item.is_available ? "" : "busy"}`}>{item.is_available ? "Available" : "In use"}</span></div>
           <div className="equipment-content">
-            <div className="equipment-title"><div><h3>{item.title}</h3><p>{item.category} • Owner: {item.owner?.full_name || 'Local Provider'}</p></div><SpeakButton label={item.title} /></div>
+            <div className="equipment-title"><div><h3>{item.title}</h3><p>{item.category} • Owner: {item.owner?.full_name || 'Local Provider'}</p></div><SpeakButton text={`${item.title}. Category: ${item.category}. Daily rate: ${item.daily_rate} rupees per day.`} label={item.title} language={language} /></div>
             <div className="price-line"><div><strong>₹{item.daily_rate}</strong><span>/ day</span></div></div>
             <div className="action-row">
               <button disabled={!item.is_available} className="book-btn" onClick={() => handleBookEquipment(item)}><Icon name="calendar" /> {item.is_available ? "Book now" : "Unavailable"}</button>
@@ -763,6 +850,7 @@ function Marketplace({ notify, user, language = "en" }: { notify: (message: stri
 
 function Jobs({ notify, user, language = "en" }: { notify: (message: string) => void; user: any; language?: LanguageCode }) {
   const [jobs, setJobs] = useState<any[]>([]);
+  const [jobSearch, setJobSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -788,11 +876,27 @@ function Jobs({ notify, user, language = "en" }: { notify: (message: string) => 
   return <main className="page-content">
     <div className="page-heading"><div><span className="eyebrow">WORK NEAR YOU</span><h1>Farm jobs</h1><p>Fair wages. Verified farmers. Paid daily.</p></div><SpeakButton label="nearby farm jobs" /></div>
 
+    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '16px' }}>
+      <label className="search-box" style={{ flex: 1, margin: 0 }}>
+        <Icon name="search" />
+        <input aria-label="Search jobs" placeholder="Search farm jobs..." value={jobSearch} onChange={e => setJobSearch(e.target.value)} />
+        {jobSearch && <button type="button" onClick={() => setJobSearch("")}>Clear</button>}
+      </label>
+      <VoiceInputButton
+        context="job_search"
+        appLanguage={language}
+        onPopulate={(fields) => {
+          if (fields.search_query) setJobSearch(fields.search_query);
+        }}
+        label="Voice Search"
+      />
+    </div>
+
     {loading ? <p>Loading job postings...</p> : (
       <div className="jobs-list">
-        {jobs.map((job) => <article className="job-card" key={job.id}>
+        {jobs.filter(j => `${j.title} ${j.farmer?.full_name || ''} ${j.description || ''}`.toLowerCase().includes(jobSearch.toLowerCase())).map((job) => <article className="job-card" key={job.id}>
           <div className="job-symbol job-0"><Icon name="leaf" size={32} /></div>
-          <div className="job-info"><div className="job-top"><span className="status live">{job.status}</span><SpeakButton label={job.title} /></div>
+          <div className="job-info"><div className="job-top"><span className="status live">{job.status}</span><SpeakButton text={`${job.title}. Farmer: ${job.farmer?.full_name || 'Farmer'}. Daily wage: ${job.daily_wage} rupees.`} label={job.title} language={language} /></div>
             <h3>{job.title}</h3>
             <p className="farm-name">{job.farmer?.full_name || 'Farmer'}</p>
             <div className="job-meta"><span><Icon name="calendar" size={17} /> {job.date_required}</span></div>
